@@ -26,13 +26,17 @@ dependencies — you don't clone four repos. (Apache-2.0, zero-dep cores.)
 No `cwd`, no `PYTHONPATH` — it's a proper installed entry point. Works in Claude Code, Cursor,
 Windsurf, any MCP client.
 
-## Tools (10)
+## Tools (14)
 
 | Tool | Mirror | Does |
 |---|---|---|
 | `mm_preregister` | 🪞 claims | seal a claim + kill-condition **before** measuring |
 | `mm_verify` | 🪞 | umbrella verify — every probe whose input key is present |
 | `mm_audit` | 🪞 | audit a result vs its sealed registration |
+| `mm_power_check` | 🪞 | false-negative guard — is n big enough? (design-time) |
+| `mm_falsifiability_check` | 🪞 | Popper gate — kill-condition registered & not tripped? |
+| `mm_leakage_check` | 🪞 | train∩test contamination |
+| `mm_multiseed_check` | 🪞 | unstable signal / lucky seed |
 | `mm_retract` | 🪞 | chain-linked retraction (cannot be silently deleted) |
 | `mm_anchor` | 🪞 | tamper-evident snapshot to store outside the ledger |
 | `am_record` | 🪪 actions | seal an action; `target=<claim_id>` ties it to a claim |
@@ -40,6 +44,8 @@ Windsurf, any MCP client.
 | `am_verify` | 🪪 | verify an action ledger's hash chain |
 | `pm_verify` | 🔎 provenance | verify a file's provenance across 5 signals |
 | `stack_verify_all` | 🪞🔎🪪 | whole stack in one call: chain (L1) + anchors (L3) + witness (L2) |
+
+(More granular `measure-mirror` probes are reachable via `mm_verify` — it dispatches by data key.)
 
 ## Why this is sound
 
