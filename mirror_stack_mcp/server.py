@@ -1,6 +1,6 @@
 """🪞🔎🪪 Mirror Stack — unified MCP server.
 
-One MCP server that exposes the whole stack to an agent: measure-mirror (claims),
+One MCP server that exposes the whole stack: measure-mirror (claims, incl. standalone probes),
 action-mirror (actions + witness), provenance-mirror (artifacts), plus a stack-level
 verify-all. Install once, add one MCP server, get the entire stack.
 
@@ -51,6 +51,33 @@ def mm_audit(ledger_path: str, claim_id: str, reported_metric: str, reported_acc
     """Audit a reported result against its sealed registration (CI, direction, ledger integrity)."""
     return _findings(mm.audit(ledger_path, claim_id, reported_metric=reported_metric,
                               reported_acc=reported_acc, n=n, baseline=baseline))
+
+
+@mcp.tool()
+def mm_power_check(n: int, baseline: float, min_detectable_effect: float = 0.05,
+                   target_power: float = 0.8) -> str:
+    """False-negative guard: is n big enough to detect the minimum effect? (design-time)."""
+    return str(mm.power_check(n, baseline, min_detectable_effect=min_detectable_effect,
+                              target_power=target_power))
+
+
+@mcp.tool()
+def mm_falsifiability_check(ledger_path: str, claim_id: str,
+                            reported_acc: float | None = None) -> str:
+    """Popper gate: is a kill-condition registered, and did the result trip it?"""
+    return str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc))
+
+
+@mcp.tool()
+def mm_leakage_check(train_items: list, test_items: list) -> str:
+    """Detect train∩test contamination via hash intersection."""
+    return str(mm.leakage_check(train_items, test_items))
+
+
+@mcp.tool()
+def mm_multiseed_check(seed_results: list[float], baseline: float = 0.5) -> str:
+    """Flag unstable signal / lucky seed across multiple runs."""
+    return str(mm.multiseed_check(seed_results, baseline=baseline))
 
 
 @mcp.tool()
