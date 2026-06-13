@@ -47,6 +47,19 @@ Windsurf, any MCP client.
 
 (More granular `measure-mirror` probes are reachable via `mm_verify` — it dispatches by data key.)
 
+## The discipline travels with the tools
+
+When an agent connects, the server injects a compact **honest-measurement discipline** via the
+MCP `instructions` handshake — so the methodology arrives *with* the tools, not as a separate
+doc someone has to find. It carries the one rule that matters most: **separate the tool from
+your judgment** — say "mm flagged X" only when a probe returned a Finding you can quote; say
+"applying the discipline, I suspect X" when it is your reasoning. Plus: seal-before-compute
+(preregister + kill-condition), power before spending, verify-before-reporting, and "a missing
+ledger is itself a signal."
+
+(MCP clients that surface server instructions — e.g. Claude Code — show this on connect. It is
+guidance, not enforcement: the hard guarantee is still the chain + witness, not the prompt.)
+
 ## Why this is sound
 
 The tamper-evidence comes from the **hash chain + external witness**, not from the MCP channel —

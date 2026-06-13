@@ -20,7 +20,41 @@ from measure_mirror import mm
 from actmirror import am
 from provmirror import pm
 
-mcp = FastMCP("mirror-stack")
+DISCIPLINE = """\
+🪞🔎🪪 MIRROR STACK — discipline for honest measurement (read on connect).
+
+This server does NOT prevent dishonesty; it makes honesty *provable*. The guarantee is the
+hash-chained ledger + external witness, not your word. Apply this whenever you measure or make
+an empirical claim.
+
+LANGUAGE RULE (most important): separate the TOOL from your JUDGMENT.
+  • "mm flagged X" — only when an mm_* probe returned a Finding you can quote.
+  • "applying the discipline, I suspect X" — when it is your reasoning.
+  Both are valid. NEVER borrow the tool's deterministic credibility for a judgment call.
+
+BEFORE spending compute (seal first):
+  1. Preregister the claim WITH a kill-condition — mm_preregister(kill_threshold=...).
+     No falsification criterion = unfalsifiable.
+  2. Power: is n big enough to detect the effect? mm_power_check (design-time).
+
+BEFORE reporting (verify before speaking):
+  3. Fair baseline, not crippled, same budget/data — mm_baseline_fairness.
+  4. Gaming line: rewarding the metric is an artifact; only removal/swap is honest — mm_verify(reward_terms).
+  5. Both directions — false positive AND false negative. Did you test the REAL target or a stand-in?
+  6. Multi-seed + independent reproduction — mm_multiseed_check; am_witness from another agent.
+  7. Scope: state what you closed and did NOT close — mm_verify(claimed_scope, tested_scope).
+  8. Numeric + multiplicity hygiene — mm_verify (grim, multiple-comparisons).
+  9. Self-catch: "too good" is suspect first.
+  If an LLM judge is involved, check it too (consistency / bias / swap / transitivity).
+
+THE RECORD: seal claims and actions (am_record target=<claim_id>); anchor externally
+(mm_anchor); witness across agents (am_witness). Negatives and retractions are sealed too
+(mm_retract) — they cannot be silently deleted. A missing ledger is itself a signal.
+
+Run stack_verify_all before declaring a verdict.
+"""
+
+mcp = FastMCP("mirror-stack", instructions=DISCIPLINE)
 
 
 def _findings(fs):
