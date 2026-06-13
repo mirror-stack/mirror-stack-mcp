@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mirror-stack-mcp"
+version = "0.1.0"
+description = "Unified MCP server for the Mirror Stack — claims, actions, provenance + verify-all in one server"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Mother Seara", email = "ruinbl82@gmail.com" }]
+dependencies = [
+    "mcp>=1.0",
+    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror",
+    "action-mirror @ git+https://github.com/bhyi4/action-mirror",
+    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror",
+]
+
+[project.scripts]
+mirror-stack-mcp = "mirror_stack_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/mirror-stack"
+
+[tool.setuptools]
+packages = ["mirror_stack_mcp"]
