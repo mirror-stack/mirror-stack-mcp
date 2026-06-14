@@ -4,6 +4,8 @@
 add one server, and an agent has all four mirrors: claims, actions, provenance, and a
 stack-level verify-all.
 
+💬 **[Discussions](https://github.com/orgs/mirror-stack/discussions)** — questions · ideas · independent reproductions welcome.
+
 ## Get all mirrors at once
 
 ```bash
