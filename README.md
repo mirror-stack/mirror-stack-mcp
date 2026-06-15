@@ -28,7 +28,7 @@ dependencies — you don't clone four repos. (Apache-2.0, zero-dep cores.)
 No `cwd`, no `PYTHONPATH` — it's a proper installed entry point. Works in Claude Code, Cursor,
 Windsurf, any MCP client.
 
-## Tools (14)
+## Tools (15)
 
 | Tool | Mirror | Does |
 |---|---|---|
@@ -41,6 +41,7 @@ Windsurf, any MCP client.
 | `mm_multiseed_check` | 🪞 | unstable signal / lucky seed |
 | `mm_retract` | 🪞 | chain-linked retraction (cannot be silently deleted) |
 | `mm_anchor` | 🪞 | tamper-evident snapshot to store outside the ledger |
+| `mm_preflight` | 🪞 | GO/BLOCK gate primitive — wire into a compute launcher / pre-commit hook |
 | `am_record` | 🪪 actions | seal an action; `target=<claim_id>` ties it to a claim |
 | `am_witness` | 🪪 | pin a peer's ledger head (catches whole-file replacement) |
 | `am_verify` | 🪪 | verify an action ledger's hash chain |
@@ -61,6 +62,50 @@ ledger is itself a signal."
 
 (MCP clients that surface server instructions — e.g. Claude Code — show this on connect. It is
 guidance, not enforcement: the hard guarantee is still the chain + witness, not the prompt.)
+
+### Reminders at each beat (configurable)
+
+The connect-time instructions fade over a long session, so the server also re-grounds the
+discipline *at the moment it matters* — a one-line reminder appended to the relevant tool's
+result. `mm_preregister` → "the **result** must be sealed too, not just prose"; `mm_verify` /
+`mm_audit` / `stack_verify_all` → the *before you state a number* checklist (the language rule,
+both directions, scope, seal negatives); `am_record`, `mm_retract`, `mm_power_check`,
+`mm_falsifiability_check` → their own one-liner. It fires at the seal/verify/publish beat, not
+every turn — a nudge, not noise.
+
+Control it with the `MIRROR_REMINDERS` env var:
+
+| value | behaviour |
+|---|---|
+| `once` *(default)* | append each reminder only the first time per session |
+| `all` | append the reminder on every relevant call |
+| `off` | never append |
+
+`once` is the default so a long loop doesn't re-pay for the same reminder every turn
+(context hygiene). Override per server:
+
+```json
+{ "mcpServers": { "mirror-stack": {
+    "command": "mirror-stack-mcp",
+    "env": { "MIRROR_REMINDERS": "all" }
+} } }
+```
+
+### Hard gate: seal-before-compute / seal-before-publish (opt-in)
+
+Reminders are *soft*. For a *hard* gate, `mm_preflight` returns a GO/BLOCK decision you wire
+into the action site:
+
+- `mm_preflight(ledger, claim_id, gate="compute")` → **BLOCK** unless a preregistration *with a
+  kill-condition* is sealed. Wire it into your training/experiment launcher so it refuses to
+  spend compute on an unsealed claim.
+- `mm_preflight(ledger, claim_id, gate="publish", am_ledger=…)` → **BLOCK** unless the *result*
+  is also sealed (a retraction, or `am_record(target=claim_id)`). Wire it into a pre-commit /
+  pre-publish hook so unresolved claims can't ship.
+
+The MCP only *judges* GO/BLOCK — **your** launcher/hook does the actual blocking. The server
+cannot intercept external compute or commits, and that is by design: the discipline is opt-in
+(a missing ledger is itself a signal), not something the channel forces on you.
 
 ## Why this is sound
 
