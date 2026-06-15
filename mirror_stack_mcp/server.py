@@ -12,6 +12,7 @@ Run:  mirror-stack-mcp        (stdio server)
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -61,6 +62,57 @@ def _findings(fs):
     return [str(f) for f in fs] if isinstance(fs, list) else str(fs)
 
 
+# ── in-tool discipline reminders (short, at the relevant beat) ────────────────
+# Configurable via the MIRROR_REMINDERS env var:
+#   all  (default) — append the reminder on every relevant call
+#   once           — append each reminder only the first time per session
+#   off            — never append
+_MODE = os.environ.get("MIRROR_REMINDERS", "all").strip().lower()
+_shown: set[str] = set()
+
+_VERIFY = ('🪞 Before you state a number: (1) "mm flagged" only for a Finding above — '
+           'reasoning is "I judge"; (2) both directions — false positive AND false '
+           'negative; (3) state scope — what you closed and did NOT; (4) seal negatives too.')
+
+REMINDERS = {
+    "mm_preregister": "🪞 Sealed. Not done until the RESULT is sealed too — "
+        "am_record(target=claim_id) on a verdict, or mm_retract if falsified. Prose doesn't "
+        "count. Your kill_condition is the stop-loss; if big compute follows, seal first, then run.",
+    "mm_verify": _VERIFY,
+    "mm_audit": _VERIFY,
+    "stack_verify_all": _VERIFY,
+    "am_record": "🪞 Action sealed. If it's a claim's outcome, confirm target=claim_id ties it "
+        "back. Payload = measured values, not hoped-for.",
+    "mm_retract": "🪞 Negative sealed — it can't be silently deleted now, and dependents go "
+        "STALE. A retraction is evidence of honesty, not failure.",
+    "mm_power_check": '🪞 Underpowered ≠ "no effect" — only "can\'t detect one". A negative here '
+        "is inconclusive; raise n or narrow scope.",
+    "mm_falsifiability_check": "🪞 If the kill-condition tripped (FAIL), the claim is falsified by "
+        'its OWN criterion → mm_retract it. If it did not trip, that\'s "not refuted", not "proven".',
+    "mm_preflight": "🪞 This is a primitive — the MCP only judges GO/BLOCK. YOUR launcher / "
+        "pre-commit hook must do the actual blocking; the MCP can't stop external compute or "
+        "commits (by design, opt-in).",
+}
+
+
+def _remind(tool, result):
+    """Append the tool's discipline reminder to its result, per MIRROR_REMINDERS mode."""
+    if _MODE == "off":
+        return result
+    msg = REMINDERS.get(tool)
+    if not msg:
+        return result
+    if _MODE == "once":
+        if tool in _shown:
+            return result
+        _shown.add(tool)
+    if isinstance(result, dict):
+        return {**result, "_reminder": msg}
+    if isinstance(result, list):
+        return result + [msg]
+    return f"{result}\n\n{msg}"
+
+
 # ───────────────────────── 🪞 measure-mirror (claims) ─────────────────────────
 @mcp.tool()
 def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 200,
@@ -68,38 +120,41 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
                    kill_condition: str | None = None, kill_threshold: dict | None = None,
                    depends_on: list[str] | None = None) -> dict:
     """Seal a claim BEFORE measuring (preregistration). kill_condition/threshold = what falsifies it."""
-    return mm.preregister(ledger_path, claim_id, metric=metric, min_n=min_n, baseline=baseline,
-                          pass_threshold=pass_threshold, kill_condition=kill_condition,
-                          kill_threshold=kill_threshold, depends_on=depends_on)
+    return _remind("mm_preregister", mm.preregister(
+        ledger_path, claim_id, metric=metric, min_n=min_n, baseline=baseline,
+        pass_threshold=pass_threshold, kill_condition=kill_condition,
+        kill_threshold=kill_threshold, depends_on=depends_on))
 
 
 @mcp.tool()
 def mm_verify(ledger_path: str, data: dict, groups: list[str] | None = None) -> list[str]:
     """Umbrella verify: runs every probe whose input key is present in `data` (acc/n/seed_results/scores/...)."""
-    return _findings(mm.verify(ledger_path, data, groups=groups))
+    return _remind("mm_verify", _findings(mm.verify(ledger_path, data, groups=groups)))
 
 
 @mcp.tool()
 def mm_audit(ledger_path: str, claim_id: str, reported_metric: str, reported_acc: float,
              n: int, baseline: float | None = None) -> list[str]:
     """Audit a reported result against its sealed registration (CI, direction, ledger integrity)."""
-    return _findings(mm.audit(ledger_path, claim_id, reported_metric=reported_metric,
-                              reported_acc=reported_acc, n=n, baseline=baseline))
+    return _remind("mm_audit", _findings(mm.audit(
+        ledger_path, claim_id, reported_metric=reported_metric,
+        reported_acc=reported_acc, n=n, baseline=baseline)))
 
 
 @mcp.tool()
 def mm_power_check(n: int, baseline: float, min_detectable_effect: float = 0.05,
                    target_power: float = 0.8) -> str:
     """False-negative guard: is n big enough to detect the minimum effect? (design-time)."""
-    return str(mm.power_check(n, baseline, min_detectable_effect=min_detectable_effect,
-                              target_power=target_power))
+    return _remind("mm_power_check", str(mm.power_check(
+        n, baseline, min_detectable_effect=min_detectable_effect, target_power=target_power)))
 
 
 @mcp.tool()
 def mm_falsifiability_check(ledger_path: str, claim_id: str,
                             reported_acc: float | None = None) -> str:
     """Popper gate: is a kill-condition registered, and did the result trip it?"""
-    return str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc))
+    return _remind("mm_falsifiability_check",
+                   str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc)))
 
 
 @mcp.tool()
@@ -117,7 +172,7 @@ def mm_multiseed_check(seed_results: list[float], baseline: float = 0.5) -> str:
 @mcp.tool()
 def mm_retract(ledger_path: str, claim_id: str, reason: str) -> dict:
     """Append a chain-linked retraction (cannot be silently deleted; dependents go STALE)."""
-    return mm.retract(ledger_path, claim_id, reason)
+    return _remind("mm_retract", mm.retract(ledger_path, claim_id, reason))
 
 
 @mcp.tool()
@@ -126,12 +181,93 @@ def mm_anchor(ledger_path: str) -> dict:
     return mm.anchor(ledger_path)
 
 
+def _scan_claim(ledger_path: str, claim_id: str):
+    """Return (prereg_entry_or_None, retracted_bool) for claim_id in a ledger."""
+    prereg, retracted = None, False
+    if os.path.exists(ledger_path):
+        with open(ledger_path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if e.get("claim_id") != claim_id:
+                    continue
+                if e.get("_type") == "retraction":
+                    retracted = True
+                elif e.get("_type") is None and ("kill_threshold" in e or "kill_condition" in e) \
+                        and e.get("metric") != "protocol_amendment":
+                    prereg = e
+    return prereg, retracted
+
+
+@mcp.tool()
+def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
+                 am_ledger: str | None = None, reported_acc: float | None = None) -> dict:
+    """GO/BLOCK gate primitive — wire it into a compute launcher or a pre-publish/commit hook.
+
+    gate="compute": GO only if a sealed preregistration WITH a kill-condition exists for
+                    claim_id (enforces seal-before-compute).
+    gate="publish": additionally GO only if a RESOLUTION is sealed — a retraction in
+                    ledger_path, or an am_record(target=claim_id) in am_ledger.
+    This is a PRIMITIVE: the MCP returns GO/BLOCK; YOUR script must do the actual blocking
+    (the MCP cannot intercept external compute or commits — that is by design).
+    """
+    prereg, retracted = _scan_claim(ledger_path, claim_id)
+    checks: list[str] = []
+
+    def out(decision, reasons):
+        return _remind("mm_preflight", {"decision": decision, "gate": gate,
+                                        "claim_id": claim_id, "reasons": reasons, "checks": checks})
+
+    if prereg is None:
+        return out("BLOCK", ["no sealed preregistration for this claim — seal one "
+                             "(mm_preregister with a kill-condition) before proceeding"])
+    has_kill = bool(prereg.get("kill_threshold") or prereg.get("kill_condition"))
+    checks.append("preregistration: sealed" + ("" if has_kill else " (NO kill-condition)"))
+
+    if gate == "compute":
+        if not has_kill:
+            return out("BLOCK", ["preregistration has no kill-condition (unfalsifiable) — "
+                                 "add one before spending compute"])
+        return out("GO", ["sealed preregistration with a kill-condition is present"])
+
+    if gate == "publish":
+        resolved = retracted
+        if retracted:
+            checks.append("resolution: retraction sealed")
+        if not resolved and am_ledger and os.path.exists(am_ledger):
+            with open(am_ledger, encoding="utf-8") as fh:
+                for line in fh:
+                    try:
+                        a = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if a.get("_type") == "action" and a.get("target") == claim_id:
+                        resolved = True
+                        checks.append("resolution: am_record(target) sealed")
+                        break
+        if not resolved:
+            return out("BLOCK", ["no sealed resolution — seal the result "
+                                 "(am_record target=claim_id, or mm_retract) before publishing. "
+                                 "Prose doesn't count."])
+        if reported_acc is not None:
+            checks.append(str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc)))
+        return out("GO", ["sealed preregistration + sealed resolution"])
+
+    return out("BLOCK", [f"unknown gate '{gate}' — use 'compute' or 'publish'"])
+
+
 # ───────────────────────── 🪪 action-mirror (actions) ─────────────────────────
 @mcp.tool()
 def am_record(ledger_path: str, agent: str, action: str, target: str | None = None,
               payload: dict | None = None) -> dict:
     """Seal one agent action. Set target=<claim_id> to tie the action to a claim (J1)."""
-    return am.record(ledger_path, agent=agent, action=action, target=target, payload=payload)
+    return _remind("am_record",
+                   am.record(ledger_path, agent=agent, action=action, target=target, payload=payload))
 
 
 @mcp.tool()
@@ -190,8 +326,9 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
         good = getattr(f, "level", "OK") in ("OK", "INFO")
         add(good, "L2 witness", am_peer_name, str(f))
 
-    return {"verdict": "ALL OK" if ok else "FAILURES", "ok": ok,
-            "checks": out, "passed": sum(c["ok"] for c in out), "total": len(out)}
+    return _remind("stack_verify_all",
+                   {"verdict": "ALL OK" if ok else "FAILURES", "ok": ok,
+                    "checks": out, "passed": sum(c["ok"] for c in out), "total": len(out)})
 
 
 def main():
