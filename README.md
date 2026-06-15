@@ -77,14 +77,17 @@ Control it with the `MIRROR_REMINDERS` env var:
 
 | value | behaviour |
 |---|---|
-| `all` *(default)* | append the reminder on every relevant call |
-| `once` | append each reminder only the first time per session |
+| `once` *(default)* | append each reminder only the first time per session |
+| `all` | append the reminder on every relevant call |
 | `off` | never append |
+
+`once` is the default so a long loop doesn't re-pay for the same reminder every turn
+(context hygiene). Override per server:
 
 ```json
 { "mcpServers": { "mirror-stack": {
     "command": "mirror-stack-mcp",
-    "env": { "MIRROR_REMINDERS": "once" }
+    "env": { "MIRROR_REMINDERS": "all" }
 } } }
 ```
 

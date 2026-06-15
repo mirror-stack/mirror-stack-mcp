@@ -64,10 +64,10 @@ def _findings(fs):
 
 # ── in-tool discipline reminders (short, at the relevant beat) ────────────────
 # Configurable via the MIRROR_REMINDERS env var:
-#   all  (default) — append the reminder on every relevant call
-#   once           — append each reminder only the first time per session
+#   once (default) — append each reminder only the first time per session
+#   all            — append the reminder on every relevant call
 #   off            — never append
-_MODE = os.environ.get("MIRROR_REMINDERS", "all").strip().lower()
+_MODE = os.environ.get("MIRROR_REMINDERS", "once").strip().lower()
 _shown: set[str] = set()
 
 _VERIFY = ('🪞 Before you state a number: (1) "mm flagged" only for a Finding above — '
