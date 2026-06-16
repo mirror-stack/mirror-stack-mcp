@@ -91,6 +91,20 @@ Control it with the `MIRROR_REMINDERS` env var:
 } } }
 ```
 
+### Output compaction (loop context hygiene)
+
+Verification output piles up across a loop's iterations — context rot + cost. The server
+compacts it **without hiding signal**: `OK`/`INFO` findings collapse to one summary line, while
+every **`WARN`/`FAIL` is kept verbatim** (a dropped negative would defeat the whole point).
+
+| `MIRROR_VERBOSITY` | behaviour |
+|---|---|
+| `compact` *(default)* | `✓ N check(s) OK: …` + every WARN/FAIL in full |
+| `full` | every finding verbatim |
+
+Per-call compaction is the server's job; summarising the running log *across* iterations is the
+loop/harness's — the server is stateless per call.
+
 ### Hard gate: seal-before-compute / seal-before-publish (opt-in)
 
 Reminders are *soft*. For a *hard* gate, `mm_preflight` returns a GO/BLOCK decision you wire

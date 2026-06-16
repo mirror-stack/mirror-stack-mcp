@@ -13,6 +13,7 @@ Run:  mirror-stack-mcp        (stdio server)
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -60,6 +61,32 @@ mcp = FastMCP("mirror-stack", instructions=DISCIPLINE)
 
 def _findings(fs):
     return [str(f) for f in fs] if isinstance(fs, list) else str(fs)
+
+
+# ── signal-preserving output compaction (loop context hygiene) ────────────────
+# A long loop agent accumulates verification output → context rot + cost. Compact
+# it WITHOUT hiding signal: summarise the OK/INFO findings to one line, keep every
+# WARN/FAIL verbatim. A dropped FAIL would be the cardinal sin (a hidden negative).
+#   MIRROR_VERBOSITY = compact (default) | full
+_VERBOSITY = os.environ.get("MIRROR_VERBOSITY", "compact").strip().lower()
+
+
+def _compact(findings):
+    if _VERBOSITY != "compact" or not isinstance(findings, list):
+        return findings
+    ok_names, kept = [], []
+    for s in findings:
+        s = str(s)
+        if "level='OK'" in s or 'level="OK"' in s or "level='INFO'" in s or 'level="INFO"' in s:
+            m = re.search(r"probe=['\"]([^'\"]+)['\"]", s)
+            ok_names.append(m.group(1) if m else "?")
+        else:
+            kept.append(s)              # WARN / FAIL always verbatim
+    out = []
+    if ok_names:
+        out.append(f"✓ {len(ok_names)} check(s) OK: {', '.join(ok_names)}")
+    out.extend(kept)
+    return out
 
 
 # ── in-tool discipline reminders (short, at the relevant beat) ────────────────
@@ -129,16 +156,16 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
 @mcp.tool()
 def mm_verify(ledger_path: str, data: dict, groups: list[str] | None = None) -> list[str]:
     """Umbrella verify: runs every probe whose input key is present in `data` (acc/n/seed_results/scores/...)."""
-    return _remind("mm_verify", _findings(mm.verify(ledger_path, data, groups=groups)))
+    return _remind("mm_verify", _compact(_findings(mm.verify(ledger_path, data, groups=groups))))
 
 
 @mcp.tool()
 def mm_audit(ledger_path: str, claim_id: str, reported_metric: str, reported_acc: float,
              n: int, baseline: float | None = None) -> list[str]:
     """Audit a reported result against its sealed registration (CI, direction, ledger integrity)."""
-    return _remind("mm_audit", _findings(mm.audit(
+    return _remind("mm_audit", _compact(_findings(mm.audit(
         ledger_path, claim_id, reported_metric=reported_metric,
-        reported_acc=reported_acc, n=n, baseline=baseline)))
+        reported_acc=reported_acc, n=n, baseline=baseline))))
 
 
 @mcp.tool()
@@ -279,7 +306,7 @@ def am_witness(my_ledger: str, peer_ledger: str, peer_name: str) -> dict:
 @mcp.tool()
 def am_verify(ledger_path: str) -> list[str]:
     """Verify an action ledger's hash chain (edits/deletions/insertions detected)."""
-    return _findings(am.verify_chain(ledger_path))
+    return _compact(_findings(am.verify_chain(ledger_path)))
 
 
 # ───────────────────────── 🔎 provenance-mirror (artifacts) ────────────────────
