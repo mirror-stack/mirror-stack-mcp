@@ -28,7 +28,7 @@ dependencies — you don't clone four repos. (Apache-2.0, zero-dep cores.)
 No `cwd`, no `PYTHONPATH` — it's a proper installed entry point. Works in Claude Code, Cursor,
 Windsurf, any MCP client.
 
-## Tools (15)
+## Tools (18)
 
 | Tool | Mirror | Does |
 |---|---|---|
@@ -40,7 +40,10 @@ Windsurf, any MCP client.
 | `mm_leakage_check` | 🪞 | train∩test contamination |
 | `mm_multiseed_check` | 🪞 | unstable signal / lucky seed |
 | `mm_retract` | 🪞 | chain-linked retraction (cannot be silently deleted) |
-| `mm_anchor` | 🪞 | tamper-evident snapshot to store outside the ledger |
+| `mm_anchor` | 🪞 | tamper-evident snapshot to store outside the ledger (local) |
+| `mm_anchor_bitcoin` | 🪞⏱️ | **real** external anchor — timestamp ledger heads into Bitcoin (OpenTimestamps) |
+| `mm_anchor_upgrade` | 🪞⏱️ | retrieve the Bitcoin block attestation once a calendar has committed (~1–3h) |
+| `mm_anchor_verify` | 🪞⏱️ | verify a Bitcoin anchor via a public block explorer — **no local node needed** |
 | `mm_preflight` | 🪞 | GO/BLOCK gate primitive — wire into a compute launcher / pre-commit hook |
 | `am_record` | 🪪 actions | seal an action; `target=<claim_id>` ties it to a claim |
 | `am_witness` | 🪪 | pin a peer's ledger head (catches whole-file replacement) |
@@ -49,6 +52,42 @@ Windsurf, any MCP client.
 | `stack_verify_all` | 🪞🔎🪪 | whole stack in one call: chain (L1) + anchors (L3) + witness (L2) |
 
 (More granular `measure-mirror` probes are reachable via `mm_verify` — it dispatches by data key.)
+
+## External anchor: Bitcoin (OpenTimestamps) ⏱️🔗
+
+`mm_anchor` writes a *local* snapshot — useful, but it's still **your** file. `mm_anchor_bitcoin`
+upgrades the L3 layer to a **real external clock**: it timestamps your ledger heads into the
+Bitcoin blockchain via [OpenTimestamps](https://opentimestamps.org), so anyone can later prove
+your record existed before a given block — independent of you *and* of GitHub.
+
+**Honest scope (this is the whole point, so we say it plainly):**
+
+- ✅ **proves** your ledger heads existed before a Bitcoin block time → no backdating, no silent rewrite.
+- ❌ **does NOT prove** the *content* is true (GIGO — an early-sealed lie is still a lie).
+- ❌ **does NOT** summon an external *judging* witness (that's the social layer, L2). The clock is
+  run *now* for a verifier who may arrive *later*.
+
+Cryptography here doesn't *block* dishonesty — it makes a rewrite **detectable**.
+
+### Use it
+
+```bash
+pip install "mirror-stack-mcp[bitcoin] @ git+https://github.com/mirror-stack/mirror-stack-mcp"
+# (pulls the `ots` CLI; needs network to reach the public OpenTimestamps calendars)
+```
+
+Then, via the MCP tools (or the agent calling them):
+
+1. **Stamp** — `mm_anchor_bitcoin(ledger_paths=["/path/seara.jsonl", …], out_dir="…/anchors_ots")`
+   → builds a manifest of the heads, submits it, returns `state="pending"` + the `.ots` path.
+2. **Upgrade** — in ~1–3h, `mm_anchor_upgrade(ots_path)` → `state="bitcoin_confirmed"` + `block_height`.
+3. **Verify** — `mm_anchor_verify(ots_path)` cross-checks the block's merkle root on a public
+   explorer (default blockstream.info) — **no Bitcoin node required** — and returns whether it matches.
+
+Anyone can independently re-check: `curl https://blockstream.info/api/block-height/<height>`.
+
+See **[docs/ANCHORING.md](docs/ANCHORING.md)** for the full walkthrough, CLI fallback, and the
+L1 / L2 / L3 model.
 
 ## The discipline travels with the tools
 

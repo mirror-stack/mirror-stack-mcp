@@ -17,6 +17,11 @@ dependencies = [
     "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror",
 ]
 
+[project.optional-dependencies]
+# Real Bitcoin anchoring (mm_anchor_bitcoin / _upgrade / _verify). Optional so the core
+# install stays light; the OTS tools self-report a clear error if `ots` is missing.
+bitcoin = ["opentimestamps-client>=0.7"]
+
 [project.scripts]
 mirror-stack-mcp = "mirror_stack_mcp.server:main"
 
