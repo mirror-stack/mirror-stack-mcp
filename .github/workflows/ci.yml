@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (with test extras; pulls the three pinned mirrors from git)
+        run: pip install -e ".[test]"
+      - name: Run tests
+        run: pytest -v
+
+  package:
+    # Build the wheel and exercise it in a CLEAN env — catches "works in the repo,
+    # broken once installed" (missing modules / entry point / a stale-or-renamed
+    # mirror dep): the exact failure class that left our local install silently old.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: |
+          pip install build
+          python -m build
+      - name: Show what the wheel actually ships
+        run: python -m zipfile -l dist/*.whl
+      - name: Install ONLY the built wheel (no source tree)
+        run: pip install dist/*.whl
+      - name: Smoke-test the installed package (run from /tmp, not the repo)
+        run: cd /tmp && python "$GITHUB_WORKSPACE/tests/smoke_installed.py"
