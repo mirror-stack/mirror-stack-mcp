@@ -22,6 +22,8 @@ from measure_mirror import mm
 from actmirror import am
 from provmirror import pm
 
+from . import ots_anchor
+
 DISCIPLINE = """\
 🪞🔎🪪 MIRROR STACK — discipline for honest measurement (read on connect).
 
@@ -50,7 +52,8 @@ BEFORE reporting (verify before speaking):
   If an LLM judge is involved, check it too (consistency / bias / swap / transitivity).
 
 THE RECORD: seal claims and actions (am_record target=<claim_id>); anchor externally
-(mm_anchor); witness across agents (am_witness). Negatives and retractions are sealed too
+(mm_anchor = local snapshot, or mm_anchor_bitcoin = real Bitcoin timestamp via OpenTimestamps —
+proves no-backdating, NOT content truth); witness across agents (am_witness). Negatives and retractions are sealed too
 (mm_retract) — they cannot be silently deleted. A missing ledger is itself a signal.
 
 Run stack_verify_all before declaring a verdict.
@@ -206,6 +209,34 @@ def mm_retract(ledger_path: str, claim_id: str, reason: str) -> dict:
 def mm_anchor(ledger_path: str) -> dict:
     """Tamper-evident snapshot (entry_count, head_seal, file hash) to store OUTSIDE the ledger."""
     return mm.anchor(ledger_path)
+
+
+@mcp.tool()
+def mm_anchor_bitcoin(ledger_paths: list[str], out_dir: str) -> dict:
+    """Real external anchor (L3): timestamp ledger HEADS into Bitcoin via OpenTimestamps.
+
+    Upgrades mm_anchor from a LOCAL snapshot to an EXTERNAL clock — proves the heads existed
+    before a Bitcoin block (no backdating / no silent rewrite), independent of you AND of GitHub,
+    for a witness who may arrive later. Needs the `ots` CLI (pip install opentimestamps-client) +
+    network. Returns state='pending' — call mm_anchor_upgrade in ~1-3h, then mm_anchor_verify.
+    Honest scope: proves precedence of the record, NOT the truth of its content (GIGO)."""
+    return _remind("mm_anchor_bitcoin", ots_anchor.stamp(ledger_paths, out_dir))
+
+
+@mcp.tool()
+def mm_anchor_upgrade(ots_path: str) -> dict:
+    """Retrieve the Bitcoin block attestation for a pending .ots proof (run ~1-3h after stamping).
+    Returns state='bitcoin_confirmed' with block_height once a calendar has committed to a block,
+    else 'pending' (retry later)."""
+    return ots_anchor.upgrade(ots_path)
+
+
+@mcp.tool()
+def mm_anchor_verify(ots_path: str, explorer: str = "https://blockstream.info/api") -> dict:
+    """Verify a Bitcoin-anchored proof WITHOUT a local Bitcoin node, by cross-checking the block
+    merkle root against a public explorer. Returns block height, block time, and whether the
+    explorer's merkle root matches the proof's (independent confirmation, not our own word)."""
+    return ots_anchor.verify(ots_path, explorer=explorer)
 
 
 def _scan_claim(ledger_path: str, claim_id: str):
