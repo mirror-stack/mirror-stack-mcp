@@ -12,15 +12,20 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "Mother Seara", email = "ruinbl82@gmail.com" }]
 dependencies = [
     "mcp>=1.0",
-    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror",
-    "action-mirror @ git+https://github.com/bhyi4/action-mirror",
-    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror",
+    # Pinned to exact commits for reproducible installs. An unpinned git dep silently
+    # tracks each mirror's default branch, so an install made before a mirror's release
+    # freezes on whatever was HEAD then and never refreshes — that is how a local install
+    # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
+    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@7bb04cb66e7a537dabdb4d56e323e6a92be55572",   # v0.15.1
+    "action-mirror @ git+https://github.com/bhyi4/action-mirror@284b0fe173eade0ecc816eac43f031b0391d7b96",     # v0.1.0
+    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@0a59e19f73dadbd8f9017640949a3a6657ad23c8",  # v0.1.0
 ]
 
 [project.optional-dependencies]
 # Real Bitcoin anchoring (mm_anchor_bitcoin / _upgrade / _verify). Optional so the core
 # install stays light; the OTS tools self-report a clear error if `ots` is missing.
 bitcoin = ["opentimestamps-client>=0.7"]
+test = ["pytest>=7"]
 
 [project.scripts]
 mirror-stack-mcp = "mirror_stack_mcp.server:main"
