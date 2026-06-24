@@ -89,6 +89,29 @@ Anyone can independently re-check: `curl https://blockstream.info/api/block-heig
 See **[docs/ANCHORING.md](docs/ANCHORING.md)** for the full walkthrough, CLI fallback, and the
 L1 / L2 / L3 model.
 
+## Verify a ledger in one command (no MCP, no config)
+
+For an *outsider* — no MCP client, no config — the `mirror-stack-verify` CLI bundles the two
+checks anyone can reproduce:
+
+```bash
+mirror-stack-verify LEDGER.jsonl --ots PROOF.ots
+```
+```
+✅ [chain]   linkage intact — 6 entries, head=1f811b94480f5c57
+✅ [bitcoin] block 953923 @ 2026-06-16T09:51:37Z — merkle root matches the explorer
+=== verdict: CONFIRMED (integrity + precedence) ===
+```
+
+- **chain** — recompute the `prev_seal→seal` linkage; an inserted, deleted, or reordered entry
+  is caught. Stdlib, no network, any mirror ledger.
+- **bitcoin** *(with `--ots`)* — cross-check the proof's Bitcoin block on a **public** explorer:
+  the head existed before that block, confirmed by a third party, not by us.
+
+Scope: proves **integrity** (not tampered) + **precedence** (not backdated) — not content truth,
+not an independent judging witness. It's the lowest-friction path to *independent* verification:
+you can't manufacture a witness, but you can make it trivial for one to verify when they arrive.
+
 ## The discipline travels with the tools
 
 When an agent connects, the server injects a compact **honest-measurement discipline** via the
