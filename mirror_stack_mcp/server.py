@@ -57,6 +57,10 @@ proves no-backdating, NOT content truth); witness across agents (am_witness). Ne
 (mm_retract) — they cannot be silently deleted. A missing ledger is itself a signal.
 
 Run stack_verify_all before declaring a verdict.
+
+GUARANTEES: integrity · non-erasure · falsifiability · verifiability — NOT independence (a social
+property no tool can give). Map: stack/PILLARS.md. The stack also ships an outsider verifier
+(mirror-stack-verify) and a hard enforcer (mirror-stack-gate, exits non-zero on BLOCK).
 """
 
 mcp = FastMCP("mirror-stack", instructions=DISCIPLINE)

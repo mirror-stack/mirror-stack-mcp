@@ -180,4 +180,6 @@ The tamper-evidence comes from the **hash chain + external witness**, not from t
 so exposing the action ledger over MCP is fine: an edit still breaks the chain. This server makes
 honesty *easy to prove*; it does not (and cannot) prevent an agent that simply never records.
 
-See the [Mirror Stack conventions + case study](https://github.com/bhyi4/measure-mirror/tree/main/stack).
+See **[what the stack guarantees — and the one it can't](https://github.com/bhyi4/measure-mirror/blob/main/stack/PILLARS.md)**
+(the four pillars: integrity · non-erasure · falsifiability · verifiability), and the
+[Mirror Stack conventions + case study](https://github.com/bhyi4/measure-mirror/tree/main/stack).
