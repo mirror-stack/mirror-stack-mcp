@@ -239,29 +239,6 @@ def mm_anchor_verify(ots_path: str, explorer: str = "https://blockstream.info/ap
     return ots_anchor.verify(ots_path, explorer=explorer)
 
 
-def _scan_claim(ledger_path: str, claim_id: str):
-    """Return (prereg_entry_or_None, retracted_bool) for claim_id in a ledger."""
-    prereg, retracted = None, False
-    if os.path.exists(ledger_path):
-        with open(ledger_path, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    e = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if e.get("claim_id") != claim_id:
-                    continue
-                if e.get("_type") == "retraction":
-                    retracted = True
-                elif e.get("_type") is None and ("kill_threshold" in e or "kill_condition" in e) \
-                        and e.get("metric") != "protocol_amendment":
-                    prereg = e
-    return prereg, retracted
-
-
 @mcp.tool()
 def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
                  am_ledger: str | None = None, reported_acc: float | None = None) -> dict:
@@ -272,51 +249,13 @@ def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
     gate="publish": additionally GO only if a RESOLUTION is sealed — a retraction in
                     ledger_path, or an am_record(target=claim_id) in am_ledger.
     This is a PRIMITIVE: the MCP returns GO/BLOCK; YOUR script must do the actual blocking
-    (the MCP cannot intercept external compute or commits — that is by design).
+    (the MCP cannot intercept external compute or commits — that is by design). The shell
+    enforcer that DOES exit non-zero is `mirror-stack-gate` (mirror_stack_mcp.gate); both
+    share the same decision logic so they can never drift apart.
     """
-    prereg, retracted = _scan_claim(ledger_path, claim_id)
-    checks: list[str] = []
-
-    def out(decision, reasons):
-        return _remind("mm_preflight", {"decision": decision, "gate": gate,
-                                        "claim_id": claim_id, "reasons": reasons, "checks": checks})
-
-    if prereg is None:
-        return out("BLOCK", ["no sealed preregistration for this claim — seal one "
-                             "(mm_preregister with a kill-condition) before proceeding"])
-    has_kill = bool(prereg.get("kill_threshold") or prereg.get("kill_condition"))
-    checks.append("preregistration: sealed" + ("" if has_kill else " (NO kill-condition)"))
-
-    if gate == "compute":
-        if not has_kill:
-            return out("BLOCK", ["preregistration has no kill-condition (unfalsifiable) — "
-                                 "add one before spending compute"])
-        return out("GO", ["sealed preregistration with a kill-condition is present"])
-
-    if gate == "publish":
-        resolved = retracted
-        if retracted:
-            checks.append("resolution: retraction sealed")
-        if not resolved and am_ledger and os.path.exists(am_ledger):
-            with open(am_ledger, encoding="utf-8") as fh:
-                for line in fh:
-                    try:
-                        a = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if a.get("_type") == "action" and a.get("target") == claim_id:
-                        resolved = True
-                        checks.append("resolution: am_record(target) sealed")
-                        break
-        if not resolved:
-            return out("BLOCK", ["no sealed resolution — seal the result "
-                                 "(am_record target=claim_id, or mm_retract) before publishing. "
-                                 "Prose doesn't count."])
-        if reported_acc is not None:
-            checks.append(str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc)))
-        return out("GO", ["sealed preregistration + sealed resolution"])
-
-    return out("BLOCK", [f"unknown gate '{gate}' — use 'compute' or 'publish'"])
+    from . import gate as _gate
+    return _remind("mm_preflight", _gate.decide(ledger_path, claim_id, gate=gate,
+                                                am_ledger=am_ledger, reported_acc=reported_acc))
 
 
 # ───────────────────────── 🪪 action-mirror (actions) ─────────────────────────

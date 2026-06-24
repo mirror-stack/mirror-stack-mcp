@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Sample git pre-commit hook — refuse to commit a result until its claim is RESOLVED.
+#
+# This is the "actual blocking" the MCP can't do: mm_preflight only judges; this hook
+# exits non-zero so the commit is stopped. It turns "resolution-before-publish" from a
+# guideline into something git enforces.
+#
+# Install:
+#   cp hooks/pre-commit.sample .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#
+# Configure: at the repo root, put one tab-separated row per gated claim in `.mirror-claims`:
+#   <claim_id>\t<claims_ledger.jsonl>\t[action_ledger.jsonl]
+# Lines starting with # are ignored. Each listed claim must have a sealed resolution
+# (a retraction, or an am_record with target=claim_id) for the commit to go through.
+set -euo pipefail
+
+CLAIMS=".mirror-claims"
+[ -f "$CLAIMS" ] || exit 0          # nothing configured → don't get in the way
+
+fail=0
+while IFS=$'\t' read -r claim ledger am || [ -n "${claim:-}" ]; do
+  [ -z "${claim:-}" ] && continue
+  case "$claim" in \#*) continue ;; esac
+  args=(publish --ledger "$ledger" --claim "$claim")
+  [ -n "${am:-}" ] && args+=(--am-ledger "$am")
+  mirror-stack-gate "${args[@]}" || fail=1
+done < "$CLAIMS"
+
+if [ "$fail" -ne 0 ]; then
+  echo "✋ commit blocked — seal the result(s) above (am_record target=claim_id, or mm_retract) first."
+  exit 1
+fi
