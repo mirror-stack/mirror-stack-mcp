@@ -29,6 +29,7 @@ test = ["pytest>=7"]
 
 [project.scripts]
 mirror-stack-mcp = "mirror_stack_mcp.server:main"
+mirror-stack-verify = "mirror_stack_mcp.verify:main"
 
 [project.urls]
 Homepage = "https://github.com/mirror-stack"
