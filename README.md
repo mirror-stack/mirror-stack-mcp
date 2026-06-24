@@ -160,6 +160,20 @@ The MCP only *judges* GO/BLOCK — **your** launcher/hook does the actual blocki
 cannot intercept external compute or commits, and that is by design: the discipline is opt-in
 (a missing ledger is itself a signal), not something the channel forces on you.
 
+**The enforcer ships with the package.** `mm_preflight` judges; the `mirror-stack-gate` CLI is
+the part that actually exits non-zero, so a shell can do the blocking the MCP can't:
+
+```bash
+mirror-stack-gate compute --ledger L.jsonl --claim my_claim && python run.py
+# exits 1 (run.py never starts) unless a kill-conditioned preregistration is sealed
+mirror-stack-gate publish --ledger L.jsonl --claim my_claim --am-ledger A.jsonl
+# exits 1 unless the result is sealed too (a retraction or am_record(target=claim))
+```
+
+For git, drop in [`hooks/pre-commit.sample`](hooks/pre-commit.sample): it runs the publish gate
+so a result can't be committed until its claim is resolved. The CLI and the MCP tool share one
+`decide()` (`gate.py`), so they can never drift apart.
+
 ## Why this is sound
 
 The tamper-evidence comes from the **hash chain + external witness**, not from the MCP channel —
