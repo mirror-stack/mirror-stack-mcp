@@ -16,7 +16,7 @@ dependencies = [
     # tracks each mirror's default branch, so an install made before a mirror's release
     # freezes on whatever was HEAD then and never refreshes — that is how a local install
     # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
-    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@3c27731ca6bfb4e8fff7cd1f972bed2bf6c4562b",   # v0.15.1 + small-sample exact-binomial (#3)
+    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@7fa4168db3e0931a01b422855eb8fd8dfcca9f7f",   # v0.16.0 — metric-kind self-calibration
     "action-mirror @ git+https://github.com/bhyi4/action-mirror@284b0fe173eade0ecc816eac43f031b0391d7b96",     # v0.1.0
     "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@0a59e19f73dadbd8f9017640949a3a6657ad23c8",  # v0.1.0
 ]

@@ -152,12 +152,18 @@ def _remind(tool, result):
 def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 200,
                    baseline: float = 0.5, pass_threshold: float = 0.6,
                    kill_condition: str | None = None, kill_threshold: dict | None = None,
-                   depends_on: list[str] | None = None) -> dict:
-    """Seal a claim BEFORE measuring (preregistration). kill_condition/threshold = what falsifies it."""
+                   depends_on: list[str] | None = None,
+                   metric_range: list | str | None = None, chance: float | None = None) -> dict:
+    """Seal a claim BEFORE measuring (preregistration). kill_condition/threshold = what falsifies it.
+
+    For a non-[0,1] metric, declare metric_range (e.g. [0,100] for a %, or "unbounded" for a
+    delta/span) + chance (the real chance level, e.g. 1/24≈0.042) so audit doesn't false-FAIL
+    or assume baseline 0.5. Omit for a plain [0,1] accuracy."""
     return _remind("mm_preregister", mm.preregister(
         ledger_path, claim_id, metric=metric, min_n=min_n, baseline=baseline,
         pass_threshold=pass_threshold, kill_condition=kill_condition,
-        kill_threshold=kill_threshold, depends_on=depends_on))
+        kill_threshold=kill_threshold, depends_on=depends_on,
+        metric_range=metric_range, chance=chance))
 
 
 @mcp.tool()
@@ -168,11 +174,16 @@ def mm_verify(ledger_path: str, data: dict, groups: list[str] | None = None) -> 
 
 @mcp.tool()
 def mm_audit(ledger_path: str, claim_id: str, reported_metric: str, reported_acc: float,
-             n: int, baseline: float | None = None) -> list[str]:
-    """Audit a reported result against its sealed registration (CI, direction, ledger integrity)."""
+             n: int, baseline: float | None = None,
+             metric_range: list | str | None = None, chance: float | None = None) -> list[str]:
+    """Audit a reported result against its sealed registration (CI, direction, ledger integrity).
+
+    metric_range/chance override the sealed prereg's (and name inference). Pass them for a
+    %/delta/span metric so the proportion probes don't false-FAIL; omit for [0,1] accuracy."""
     return _remind("mm_audit", _compact(_findings(mm.audit(
         ledger_path, claim_id, reported_metric=reported_metric,
-        reported_acc=reported_acc, n=n, baseline=baseline))))
+        reported_acc=reported_acc, n=n, baseline=baseline,
+        metric_range=metric_range, chance=chance))))
 
 
 @mcp.tool()
