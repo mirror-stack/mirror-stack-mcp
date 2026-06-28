@@ -196,10 +196,16 @@ def mm_power_check(n: int, baseline: float, min_detectable_effect: float = 0.05,
 
 @mcp.tool()
 def mm_falsifiability_check(ledger_path: str, claim_id: str,
-                            reported_acc: float | None = None) -> str:
-    """Popper gate: is a kill-condition registered, and did the result trip it?"""
+                            reported_acc: float | None = None,
+                            am_ledger: str | None = None) -> str:
+    """Popper gate: is a kill-condition registered, and did the result trip it?
+
+    With no reported_acc, it self-evaluates from a sealed resolution — a retraction,
+    or an am_record(target=claim_id) carrying a result/verdict. Pass am_ledger to point
+    at the action ledger if the result lives there."""
     return _remind("mm_falsifiability_check",
-                   str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc)))
+                   str(mm.falsifiability_check(ledger_path, claim_id,
+                                               reported_acc=reported_acc, am_ledger=am_ledger)))
 
 
 @mcp.tool()
