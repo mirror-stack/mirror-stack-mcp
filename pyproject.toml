@@ -16,10 +16,7 @@ dependencies = [
     # tracks each mirror's default branch, so an install made before a mirror's release
     # freezes on whatever was HEAD then and never refreshes — that is how a local install
     # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
-    # TODO(P2): bump SHA to measure-mirror >=0.18.0 once the linkage single-source PR merges.
-    # verify.check_chain now delegates to mm.linkage_check (added in 0.18.0); CI stays red on
-    # this 0.17.0 pin until the bump. Bump on purpose (see note above).
-    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@959223042b861e934adb5420b0b671651777dc65",   # v0.17.0 — PENDING bump to >=0.18.0 (mm.linkage_check)
+    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@fdc35e93e402592e9c9c6199f19df04f11c36446",   # v0.18.0 — mm.linkage_check single-source (P2); verify.check_chain delegates to it
     "action-mirror @ git+https://github.com/bhyi4/action-mirror@284b0fe173eade0ecc816eac43f031b0391d7b96",     # v0.1.0
     "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@0a59e19f73dadbd8f9017640949a3a6657ad23c8",  # v0.1.0
 ]

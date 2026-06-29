@@ -27,8 +27,8 @@ Single-source the stack's linkage check (P2) + first canonical map of the two su
   points (CLI + library) give the identical verdict (37 → 40 tests).
 
 ### Requires
-- **measure-mirror >= 0.18.0** (`mm.linkage_check`). The pinned dependency SHA
-  must be bumped to a 0.18.0+ commit; until then CI fails on this pin by design.
+- **measure-mirror >= 0.18.0** (`mm.linkage_check`). The pinned dependency SHA is
+  bumped to the 0.18.0 commit (`fdc35e9`).
 
 ---
 
