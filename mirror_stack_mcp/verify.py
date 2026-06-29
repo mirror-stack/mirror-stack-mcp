@@ -19,31 +19,22 @@ Honest scope: this proves INTEGRITY (not tampered) and PRECEDENCE (not backdated
 It does NOT prove the content is true, nor that an independent judge witnessed it.
 """
 import argparse
-import json
 import sys
-from pathlib import Path
 
 OK, FAIL, WARN = "✅", "❌", "⚠️"
 
 
 def check_chain(path):
-    """Format-agnostic prev_seal→seal linkage. Returns (ok, message)."""
-    try:
-        entries = [json.loads(l) for l in Path(path).read_text(encoding="utf-8").splitlines() if l.strip()]
-    except (OSError, json.JSONDecodeError) as e:
-        return False, f"ledger unreadable: {e}"
-    if not entries:
-        return False, "ledger is empty"
-    prev = None
-    for i, e in enumerate(entries):
-        declared = str(e.get("prev_seal", ""))
-        if i == 0:
-            if declared.lower() != "genesis":
-                return False, f"first entry prev_seal={declared!r} is not 'genesis'"
-        elif declared != prev:
-            return False, f"linkage broken at entry {i}: prev_seal {declared} != {prev}"
-        prev = str(e.get("seal", ""))
-    return True, f"linkage intact — {len(entries)} entries, head={prev[:16]}"
+    """Format-agnostic prev_seal→seal linkage. Returns (ok, message).
+
+    Single source: delegates to measure-mirror's canonical `mm.linkage_check`
+    (stdlib-only, zero-dep) rather than keeping a parallel copy — measure-mirror
+    is already a hard dependency of this package, and a second copy had drifted
+    (it reported malformed JSON as "unreadable"). One definition = no drift.
+    """
+    from measure_mirror.mm import linkage_check
+    ok, message, _entries = linkage_check(path)
+    return ok, message
 
 
 def check_bitcoin(ots_path, explorer):
