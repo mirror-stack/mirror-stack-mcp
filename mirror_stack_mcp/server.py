@@ -61,6 +61,12 @@ Run stack_verify_all before declaring a verdict.
 GUARANTEES: integrity · non-erasure · falsifiability · verifiability — NOT independence (a social
 property no tool can give). Map: stack/PILLARS.md. The stack also ships an outsider verifier
 (mirror-stack-verify) and a hard enforcer (mirror-stack-gate, exits non-zero on BLOCK).
+
+NORMATIVE FORMAT: the ledger format is defined by MIRROR-SPEC v1.0 (measure-mirror
+docs/SPEC.md, ratified & frozen 2026-07-02) — these tools are a reference implementation.
+KNOWN ILLUSIONS: before trusting a surprising result (good OR bad), scan the catalog of
+measurement illusions (measure-mirror catalog/, 30 real sealed cases: gaming, self-catch,
+false-negative guards, contamination). When you retract, consider adding a specimen.
 """
 
 mcp = FastMCP("mirror-stack", instructions=DISCIPLINE)
@@ -118,7 +124,10 @@ REMINDERS = {
     "am_record": "🪞 Action sealed. If it's a claim's outcome, confirm target=claim_id ties it "
         "back. Payload = measured values, not hoped-for.",
     "mm_retract": "🪞 Negative sealed — it can't be silently deleted now, and dependents go "
-        "STALE. A retraction is evidence of honesty, not failure.",
+        "STALE. A retraction is evidence of honesty, not failure. 🦋 Consider a specimen for "
+        "the illusion catalog (measure-mirror catalog/): label this reason with a catalog id; "
+        "same trick → add the case to that entry, new trick → new entry (real case + seal ref "
+        "required).",
     "mm_power_check": '🪞 Underpowered ≠ "no effect" — only "can\'t detect one". A negative here '
         "is inconclusive; raise n or narrow scope.",
     "mm_falsifiability_check": "🪞 If the kill-condition tripped (FAIL), the claim is falsified by "
