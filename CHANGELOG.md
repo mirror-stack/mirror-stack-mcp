@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.2.1] — 2026-07-02
 
 ### Changed
+- **Pinned measure-mirror bumped v0.18.0 → v0.22.0** (`fdc35e9` → `956c12a`):
+  picks up MIRROR-SPEC v1.0 (ratified & frozen), 4 verify fixes surfaced by
+  spec-writing (verify_chain uppercase-genesis false-FAIL; linkage_check
+  crashes on non-object JSON lines and non-UTF-8 bytes → now clean malformed
+  FAILs), 14 conformance vectors (`spec/vectors/`), and the 30-entry
+  illusion catalog (`catalog/`).
 - **`mm_retract` reminder now prompts catalog collection** — the moment of
   retraction is the moment a measurement-illusion specimen is born. The
   reminder asks to label the retraction reason with a catalog id
@@ -15,6 +21,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   existing entry (same trick) or a new one (new trick, real case + seal
   ref required). Substrate-agnostic: reaches every agent that retracts
   through the MCP, regardless of harness.
+- **DISCIPLINE (connect-time instructions) now names the normative spec and
+  the catalog** — MIRROR-SPEC v1.0 as the ledger-format authority, and the
+  illusion catalog as the scan-before-trusting resource.
+- **`docs/STACK_CANONICAL.md`** — added the ledger-format-authority note:
+  both surfaces are reference implementations of MIRROR-SPEC v1.0; where
+  code and spec disagree, the code is wrong.
 
 ---
 

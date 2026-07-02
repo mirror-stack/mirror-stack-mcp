@@ -4,6 +4,14 @@ Two repos make up the running stack. They are **different surfaces, not
 duplicates** — keep them separate. This is the canonical map of who owns what,
 so "which one is authoritative?" has a written answer.
 
+> **Ledger format authority**: the normative definition of the ledger format
+> itself (seal algorithm, chain rules, record types, verification levels) is
+> **[MIRROR-SPEC v1.0](https://github.com/bhyi4/measure-mirror/blob/main/docs/SPEC.md)**
+> (ratified & frozen 2026-07-02). Everything below — both surfaces, all
+> verifiers — is a *reference implementation* of that spec; where code and
+> spec disagree, the code is wrong. Conformance vectors: measure-mirror
+> `spec/vectors/`.
+
 ## The two surfaces (division of labour)
 
 | Surface | Lives in | Owns |
