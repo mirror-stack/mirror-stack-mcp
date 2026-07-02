@@ -118,7 +118,10 @@ REMINDERS = {
     "am_record": "🪞 Action sealed. If it's a claim's outcome, confirm target=claim_id ties it "
         "back. Payload = measured values, not hoped-for.",
     "mm_retract": "🪞 Negative sealed — it can't be silently deleted now, and dependents go "
-        "STALE. A retraction is evidence of honesty, not failure.",
+        "STALE. A retraction is evidence of honesty, not failure. 🦋 Consider a specimen for "
+        "the illusion catalog (measure-mirror catalog/): label this reason with a catalog id; "
+        "same trick → add the case to that entry, new trick → new entry (real case + seal ref "
+        "required).",
     "mm_power_check": '🪞 Underpowered ≠ "no effect" — only "can\'t detect one". A negative here '
         "is inconclusive; raise n or narrow scope.",
     "mm_falsifiability_check": "🪞 If the kill-condition tripped (FAIL), the claim is falsified by "

@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.1] — 2026-07-02
+
+### Changed
+- **`mm_retract` reminder now prompts catalog collection** — the moment of
+  retraction is the moment a measurement-illusion specimen is born. The
+  reminder asks to label the retraction reason with a catalog id
+  (measure-mirror `catalog/`, 30 entries) and to add the case to an
+  existing entry (same trick) or a new one (new trick, real case + seal
+  ref required). Substrate-agnostic: reaches every agent that retracts
+  through the MCP, regardless of harness.
+
+---
+
 ## [0.2.0] — 2026-06-29
 
 Single-source the stack's linkage check (P2) + first canonical map of the two surfaces.
