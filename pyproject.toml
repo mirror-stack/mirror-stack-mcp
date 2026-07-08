@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mirror-stack-mcp"
-version = "0.2.1"
+version = "0.2.2"
 description = "Unified MCP server for the Mirror Stack — claims, actions, provenance + verify-all in one server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,9 +16,9 @@ dependencies = [
     # tracks each mirror's default branch, so an install made before a mirror's release
     # freezes on whatever was HEAD then and never refreshes — that is how a local install
     # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
-    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@956c12a347ae72ad0deaab4c611929a1945da321",   # v0.22.0 — MIRROR-SPEC v1.0 ratified; verify fixes (genesis case, non-object, non-UTF-8); catalog/ + spec/vectors
-    "action-mirror @ git+https://github.com/bhyi4/action-mirror@284b0fe173eade0ecc816eac43f031b0391d7b96",     # v0.1.0
-    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@0a59e19f73dadbd8f9017640949a3a6657ad23c8",  # v0.1.0
+    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@c1485148ed397b13532e16a827eeca2af6a4cb64",   # v0.24.0 — grounding probes ㉑㉒㉓ + SPEC amendment A1 (optional preregister fields); v0.23.0 seal-time kill_threshold validation; v0.22.1 docs
+    "action-mirror @ git+https://github.com/bhyi4/action-mirror@fd46e90c3e3f0706792c261316f4699d7a6799d8",     # v0.1.0 (ledgers conform to MIRROR-SPEC v1.0)
+    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@be997bfcba56e415ae87cb1894816378513eeeef",  # v0.1.0 (ledgers conform to MIRROR-SPEC v1.0)
 ]
 
 [project.optional-dependencies]

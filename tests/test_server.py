@@ -159,7 +159,8 @@ def test_preflight_unknown_gate(tmp_path):
 # ── cross-package integration: a real mirror dep must work end-to-end ──────────
 def test_stack_verify_all_on_a_freshly_sealed_ledger(tmp_path):
     led = tmp_path / "mm.jsonl"
-    s.mm_preregister(str(led), "c1", metric="acc", kill_threshold={"below": 0.5})
+    s.mm_preregister(str(led), "c1", metric="acc",
+                     kill_threshold={"metric": "acc", "threshold": 0.5, "direction": "below"})
     r = s.stack_verify_all(mm_ledger=str(led))
     assert r["ok"] is True and r["verdict"] == "ALL OK"
     assert r["passed"] >= 1
