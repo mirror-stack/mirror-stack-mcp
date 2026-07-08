@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.2] — 2026-07-08
+
+### Changed
+- **Pinned measure-mirror bumped v0.22.0 → v0.24.0** (`956c12a` → `08d0ece`):
+  picks up v0.23.0 (seal-time `kill_threshold` validation + graceful
+  degradation on legacy malformed entries), v0.24.0 (grounding probes ㉑㉒㉓ —
+  anchor-basis / threshold-provenance / content-delta — plus MIRROR-SPEC
+  amendment A1: optional `anchor_basis` / `threshold_source` preregister
+  fields, auto-audited), and v0.22.1 docs. The umbrella `mm_verify` / `audit`
+  paths now reach the new probes; no new standalone tool was added.
+- **Refreshed action-mirror / provenance-mirror pins** to their latest HEAD
+  (`284b0fe` → `fd46e90`, `0a59e19` → `be997bf`): docs-only "ledgers conform to
+  MIRROR-SPEC v1.0" commits, versions unchanged at 0.1.0.
+
+### Fixed
+- **`tests/test_server.py` fixture used a legacy `kill_threshold` shape**
+  (`{"below": 0.5}`) that measure-mirror v0.23.0+ rejects at seal time. Updated
+  to the structured form `{"metric", "threshold", "direction"}` so the
+  cross-package integration test passes against the bumped pin. (This was a
+  latent tripwire: green under the old pin, would have broken on the bump.)
+
+---
+
 ## [0.2.1] — 2026-07-02
 
 ### Changed
