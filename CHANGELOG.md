@@ -8,7 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.2.2] — 2026-07-08
 
 ### Changed
-- **Pinned measure-mirror bumped v0.22.0 → v0.24.0** (`956c12a` → `c148514`):
+- **Pinned measure-mirror bumped v0.22.0 → v0.24.0** (`956c12a` → `08d0ece`):
   picks up v0.23.0 (seal-time `kill_threshold` validation + graceful
   degradation on legacy malformed entries), v0.24.0 (grounding probes ㉑㉒㉓ —
   anchor-basis / threshold-provenance / content-delta — plus MIRROR-SPEC

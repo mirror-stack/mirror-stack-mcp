@@ -16,7 +16,7 @@ dependencies = [
     # tracks each mirror's default branch, so an install made before a mirror's release
     # freezes on whatever was HEAD then and never refreshes — that is how a local install
     # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
-    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@c1485148ed397b13532e16a827eeca2af6a4cb64",   # v0.24.0 — grounding probes ㉑㉒㉓ + SPEC amendment A1 (optional preregister fields); v0.23.0 seal-time kill_threshold validation; v0.22.1 docs
+    "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@08d0ecec1c33621470d75637712876721f407470",   # v0.24.0 — grounding probes ㉑㉒㉓ + SPEC amendment A1 (optional preregister fields); v0.23.0 seal-time kill_threshold validation; v0.22.1 docs
     "action-mirror @ git+https://github.com/bhyi4/action-mirror@fd46e90c3e3f0706792c261316f4699d7a6799d8",     # v0.1.0 (ledgers conform to MIRROR-SPEC v1.0)
     "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@be997bfcba56e415ae87cb1894816378513eeeef",  # v0.1.0 (ledgers conform to MIRROR-SPEC v1.0)
 ]
