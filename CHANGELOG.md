@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.4] — 2026-07-09
+
+### Changed
+- **Refreshed measure-mirror pin** (`5a61ae4` → `3e2aaf24`, both v0.25.0):
+  picks up measure-mirror #25 (catalog specimen `provenance-not-in-the-value`,
+  v1.4 / 39 entries). Docs-only downstream; no probe/API change.
+
+### Fixed
+- **Connect-time DISCIPLINE catalog count 38 → 39** (`server.py`) — the illusion
+  catalog grew to 39 (measure-mirror #25). This stale count was missed by the
+  cross-repo checker's CP2 (which only inspected measure-mirror's own READMEs,
+  not this server's reference) — the checker's CP2 has since been extended to
+  cover this cross-repo reference.
+
+---
+
 ## [0.2.3] — 2026-07-09
 
 ### Changed

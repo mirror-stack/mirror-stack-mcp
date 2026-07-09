@@ -65,7 +65,7 @@ property no tool can give). Map: stack/PILLARS.md. The stack also ships an outsi
 NORMATIVE FORMAT: the ledger format is defined by MIRROR-SPEC v1.0 (measure-mirror
 docs/SPEC.md, ratified & frozen 2026-07-02) — these tools are a reference implementation.
 KNOWN ILLUSIONS: before trusting a surprising result (good OR bad), scan the catalog of
-measurement illusions (measure-mirror catalog/, 38 real sealed cases: gaming, self-catch,
+measurement illusions (measure-mirror catalog/, 39 real sealed cases: gaming, self-catch,
 false-negative guards, contamination). When you retract, consider adding a specimen.
 """
 
