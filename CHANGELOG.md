@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.3] — 2026-07-09
+
+### Changed
+- **Pinned measure-mirror bumped v0.24.0 → v0.25.0** (`08d0ece` → `5a61ae4`):
+  picks up the anchor-discipline probes ㉔㉕ (`anchor_line_source_check`,
+  `anchor_cell_check` — the other two `anchor-reproduction-failure` catalog
+  subtypes, completing the trio with ㉑) and MIRROR-SPEC amendment A2 (optional
+  preregister fields `anchor_cell` / `anchor_line_source` / `known_confounds`).
+  The umbrella `mm_verify` / `audit` paths reach the new probes; no new
+  standalone tool added here.
+- **Refreshed provenance-mirror pin** (`be997bf` → `8edbbfd`): docs-only
+  ("GENESIS" case-deviation disclosure), version unchanged at 0.1.0.
+  action-mirror pin unchanged (already at HEAD).
+
+---
+
 ## [0.2.2] — 2026-07-08
 
 ### Changed
