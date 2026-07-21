@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.7] — 2026-07-21
+
+### Changed
+- **measure-mirror pin `13077df` → `690c27e` (v0.26.0 → v0.27.0)**. Picks up, in order:
+  - **v0.27.0 — full 64-hex SHA-256 seals** (security, SPEC v1.1): 16-hex truncated
+    seals allowed a birthday-search (~2³² hashes) to forge two entries sharing one seal
+    and swap them post-seal. Legacy 16-hex seals keep verifying (prefix match) — no
+    ledger migration. The stack's L1 chain check inherits the wider digest.
+  - **v0.26.1 — ㉗ `prereg_lint` false-positive fix**: an audit of the probe against 64
+    real ledgers found ⑫c was reading `baseline` as the chance floor → **44 spurious
+    FAILs = 44 wrong compute-gate BLOCKs**. It now uses a declared `chance` only, so a
+    below-chance gate BLOCK requires `chance=` on the preregistration.
+- Docs: "bar at/below chance" → "bar at/below **declared** chance" (README, connect-time
+  DISCIPLINE, `mm_prereg_lint` reminder).
+
+### Fixed
+- **`test_compute_gate_blocks_on_lint_fail_below_chance_bar`** now declares `chance=`
+  (the corrected contract) + new `test_compute_gate_does_not_block_on_baseline_alone`
+  pins the false-positive guard: `pass < baseline` with no declared `chance` must GO.
+
 ## [0.2.6] — 2026-07-21
 
 ### Added
