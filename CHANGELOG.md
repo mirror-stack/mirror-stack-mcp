@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.9] — 2026-07-21
+
+### Changed
+- **measure-mirror pin `28290f2` → `abe0c19` (v0.28.0 → v0.28.1)**. Picks up the
+  **`power_check` honesty fix**: the probe hardcoded its critical values
+  (`z_alpha2 = 1.96`, `z_beta = 0.842`), so `mm_power_check` printed the
+  requested power (e.g. "at 99% power") while the required-n was *always*
+  computed at 80% power / α=0.05 — the printed text and number contradicted
+  each other. Both z-values now derive from the `alpha`/`target_power`
+  arguments via `statistics.NormalDist().inv_cdf` (stdlib, still zero-dep);
+  `target_power=0.99` → n≥1829 (was 781), `alpha=0.0001` → n≥2229. Default
+  (α=0.05, power=0.80) unchanged. This reaches the `mm_power_check` tool.
+- Pin recorded as the **full 40-hex SHA** (the v0.28.0 bump #20 landed a 9-hex
+  abbreviation, which broke the cross-repo pin-lag checker; normalized since).
+
 ## [0.2.8] — 2026-07-21
 
 ### Changed
