@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mirror-stack-mcp"
-version = "0.2.7"
+version = "0.2.8"
 description = "Unified MCP server for the Mirror Stack — claims, actions, provenance + verify-all in one server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,8 +17,8 @@ dependencies = [
     # freezes on whatever was HEAD then and never refreshes — that is how a local install
     # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
     "measure-mirror @ git+https://github.com/bhyi4/measure-mirror@690c27e9645878576f7284bdcc9b7cafdf7c0f53",   # v0.27.0 — full 64-hex SHA-256 seals (security, SPEC v1.1); v0.26.1 ㉗ prereg_lint false-positive fix (declared-chance floor); v0.26.0 ㉗ prereg_lint probe + pre_seal_checks (required by mm_prereg_lint/gate wiring); v0.24~0.25 grounding/anchor probes ㉑–㉕
-    "action-mirror @ git+https://github.com/bhyi4/action-mirror@fd46e90c3e3f0706792c261316f4699d7a6799d8",     # v0.1.0 (ledgers conform to MIRROR-SPEC v1.0)
-    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@8edbbfd94772d3718de93271c1f80297c0476043",  # v0.1.0 (ledgers conform to MIRROR-SPEC v1.0)
+    "action-mirror @ git+https://github.com/bhyi4/action-mirror@fa1fc4998936e6bf179b5c14825fb09e78a36087",     # v0.2.0 — full 64-hex SHA-256 seals (security; legacy 16-hex verify via prefix match); v0.1.0 ledgers conform to MIRROR-SPEC v1.0
+    "provenance-mirror @ git+https://github.com/bhyi4/provenance-mirror@321f84abc4ffd91da43a5ebc866b5ce02cf3c276",  # v0.2.0 — full 64-hex SHA-256 seals (security; legacy 16-hex verify via prefix match); v0.1.0 ledgers conform to MIRROR-SPEC v1.0
 ]
 
 [project.optional-dependencies]
