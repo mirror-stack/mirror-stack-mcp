@@ -34,15 +34,16 @@ dependencies — you don't clone four repos. (Apache-2.0, zero-dep cores.)
 No `cwd`, no `PYTHONPATH` — it's a proper installed entry point. Works in Claude Code, Cursor,
 Windsurf, any MCP client.
 
-## Tools (18)
+## Tools (19)
 
 | Tool | Mirror | Does |
 |---|---|---|
-| `mm_preregister` | 🪞 claims | seal a claim + kill-condition **before** measuring |
+| `mm_preregister` | 🪞 claims | seal a claim + kill-condition **before** measuring (response carries an auto seal-quality lint) |
 | `mm_verify` | 🪞 | umbrella verify — every probe whose input key is present |
 | `mm_audit` | 🪞 | audit a result vs its sealed registration |
 | `mm_power_check` | 🪞 | false-negative guard — is n big enough? (design-time) |
 | `mm_falsifiability_check` | 🪞 | Popper gate — kill-condition registered & not tripped? |
+| `mm_prereg_lint` | 🪞 | seal *quality* lint (㉗) — leaked kill-condition, bar at/below chance, unstructured kill, low n, undeclared pre-seal checks; the compute gate BLOCKs on a lint FAIL |
 | `mm_leakage_check` | 🪞 | train∩test contamination |
 | `mm_multiseed_check` | 🪞 | unstable signal / lucky seed |
 | `mm_retract` | 🪞 | chain-linked retraction (cannot be silently deleted) |
