@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.5] — 2026-07-21
+
+### Changed
+- **Refreshed measure-mirror pin** (`3e2aaf24` → `e2911ca`, both v0.25.0):
+  picks up measure-mirror #26 (catalog v1.8 / 45 entries — +2 specimens,
+  +3 real cases from the cell arc). Docs-only downstream; no probe/API change.
+
+### Fixed
+- **Connect-time DISCIPLINE catalog count 39 → 45** (`server.py`) — the illusion
+  catalog grew to 45 real sealed cases (measure-mirror #26). Caught by the
+  cross-repo checker's CP2 after #26 merged. All 45 are real sealed cases
+  (catalog rule: no fabrication — every entry backed by a db/curated line +
+  ledger seal), so this is a faithful count, not inflation.
+
+---
+
 ## [0.2.4] — 2026-07-09
 
 ### Changed
