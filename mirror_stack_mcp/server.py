@@ -67,7 +67,7 @@ GUARANTEES: integrity · non-erasure · falsifiability · verifiability — NOT 
 property no tool can give). Map: stack/PILLARS.md. The stack also ships an outsider verifier
 (mirror-stack-verify) and a hard enforcer (mirror-stack-gate, exits non-zero on BLOCK).
 
-NORMATIVE FORMAT: the ledger format is defined by MIRROR-SPEC v1.0 (measure-mirror
+NORMATIVE FORMAT: the ledger format is defined by MIRROR-SPEC v1.1 (measure-mirror
 docs/SPEC.md, ratified & frozen 2026-07-02) — these tools are a reference implementation.
 KNOWN ILLUSIONS: before trusting a surprising result (good OR bad), scan the catalog of
 measurement illusions (measure-mirror catalog/, 46 real sealed cases: gaming, self-catch,

@@ -6,7 +6,7 @@ so "which one is authoritative?" has a written answer.
 
 > **Ledger format authority**: the normative definition of the ledger format
 > itself (seal algorithm, chain rules, record types, verification levels) is
-> **[MIRROR-SPEC v1.0](https://github.com/mirror-stack/measure-mirror/blob/main/docs/SPEC.md)**
+> **[MIRROR-SPEC v1.1](https://github.com/mirror-stack/measure-mirror/blob/main/docs/SPEC.md)**
 > (ratified & frozen 2026-07-02). Everything below — both surfaces, all
 > verifiers — is a *reference implementation* of that spec; where code and
 > spec disagree, the code is wrong. Conformance vectors: measure-mirror
