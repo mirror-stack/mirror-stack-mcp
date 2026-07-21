@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.8] — 2026-07-21
+
+### Changed
+- **Refreshed action-mirror + provenance-mirror pins to v0.2.0** (both
+  `fd46e90`/`8edbbfd` → `fa1fc49`/`321f84a`): picks up the family-wide
+  **full 64-hex SHA-256 seal** security upgrade (16-hex/64-bit truncation
+  closed the dishonest-sealer birthday-collision gap ~2^32; legacy 16-hex
+  seals keep verifying via prefix match, no migration). Completes the stack
+  security bump already carried for measure-mirror (v0.27.0) in 0.2.7.
+  provenance-mirror pin also includes its [0.2.0] CHANGELOG sync.
+
 ## [0.2.7] — 2026-07-21
 
 ### Changed
