@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mirror-stack-mcp"
-version = "0.2.8"
+version = "0.2.9"
 description = "Unified MCP server for the Mirror Stack — claims, actions, provenance + verify-all in one server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,7 +16,7 @@ dependencies = [
     # tracks each mirror's default branch, so an install made before a mirror's release
     # freezes on whatever was HEAD then and never refreshes — that is how a local install
     # ran stale measure-mirror 0.14.3 long after 0.15.1 landed. Bump these on purpose.
-    "measure-mirror @ git+https://github.com/mirror-stack/measure-mirror@28290f2bad327525a0ec3b0b6287805c684c4647",   # v0.28.0 — SECURITY: verify_chain no longer waives the chain link on missing prev_seal (SPEC §4 rule 3); v0.27.0 full 64-hex seals; v0.26 ㉗ prereg_lint
+    "measure-mirror @ git+https://github.com/mirror-stack/measure-mirror@abe0c19d3894c1278a9bf5281a45946ef0e1eea4",   # v0.28.1 — power_check honors alpha/target_power (was hardcoded 1.96/0.842: text-vs-number lie); v0.28.0 SECURITY verify_chain prev_seal (SPEC §4 rule 3); v0.27.0 full 64-hex seals; v0.26 ㉗ prereg_lint
     "action-mirror @ git+https://github.com/mirror-stack/action-mirror@fa1fc4998936e6bf179b5c14825fb09e78a36087",     # v0.2.0 — full 64-hex SHA-256 seals (security; legacy 16-hex verify via prefix match); v0.1.0 ledgers conform to MIRROR-SPEC v1.0
     "provenance-mirror @ git+https://github.com/mirror-stack/provenance-mirror@321f84abc4ffd91da43a5ebc866b5ce02cf3c276",  # v0.2.0 — full 64-hex SHA-256 seals (security; legacy 16-hex verify via prefix match); v0.1.0 ledgers conform to MIRROR-SPEC v1.0
 ]
