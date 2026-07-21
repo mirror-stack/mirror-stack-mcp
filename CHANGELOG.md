@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.6] — 2026-07-21
+
+### Added
+- **`mm_prereg_lint` tool** (19 tools total) — surfaces measure-mirror's new
+  `prereg_lint` (㉗): a seal-*quality* check to run right before spending compute.
+  Distinct from `mm_falsifiability_check` (presence) and the `mm_preflight`
+  existence gate — it flags a kill-condition leaked into the `metric` field, a
+  quantified kill with no structured threshold, a pass bar at/below chance, a
+  low `min_n`, or no declared pre-seal machine-checks.
+- **`mm_preregister(pre_seal_checks=[...])`** passthrough.
+
+### Changed (deps)
+- **measure-mirror pin `e2911ca` → `13077df`** (v0.25.0 → v0.26.0, #28): brings the
+  `prereg_lint` probe this release's tool and gate wiring require.
+
+### Changed
+- **Compute gate reports a leaked kill-condition** (`gate.py`) — when a
+  pre-registration exists but its kill-condition leaked into `metric` (no kill
+  fields), `mm_preflight`/`mirror-stack-gate compute` still BLOCKs, now with the
+  accurate reason (pointing to `mm_prereg_lint`) instead of the misleading
+  "no sealed preregistration".
+
 ## [0.2.5] — 2026-07-21
 
 ### Changed

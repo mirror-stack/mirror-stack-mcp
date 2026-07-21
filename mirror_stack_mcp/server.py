@@ -38,17 +38,22 @@ LANGUAGE RULE (most important): separate the TOOL from your JUDGMENT.
 
 BEFORE spending compute (seal first):
   1. Preregister the claim WITH a kill-condition — mm_preregister(kill_threshold=...).
-     No falsification criterion = unfalsifiable.
+     No falsification criterion = unfalsifiable. Run the cheap machine-checks first and
+     declare them (pre_seal_checks=: reachability-smoke / mass-balance-audit /
+     neutral-control / manipulation-check / positive-control).
   2. Power: is n big enough to detect the effect? mm_power_check (design-time).
+  3. Lint the seal — mm_prereg_lint (auto in the mm_preregister response). A FAIL
+     (kill-condition leaked into the metric field, bar at/below chance) means the
+     automated checks can't fire: fix and re-seal under a NEW claim_id.
 
 BEFORE reporting (verify before speaking):
-  3. Fair baseline, not crippled, same budget/data — mm_baseline_fairness.
-  4. Gaming line: rewarding the metric is an artifact; only removal/swap is honest — mm_verify(reward_terms).
-  5. Both directions — false positive AND false negative. Did you test the REAL target or a stand-in?
-  6. Multi-seed + independent reproduction — mm_multiseed_check; am_witness from another agent.
-  7. Scope: state what you closed and did NOT close — mm_verify(claimed_scope, tested_scope).
-  8. Numeric + multiplicity hygiene — mm_verify (grim, multiple-comparisons).
-  9. Self-catch: "too good" is suspect first.
+  4. Fair baseline, not crippled, same budget/data — mm_baseline_fairness.
+  5. Gaming line: rewarding the metric is an artifact; only removal/swap is honest — mm_verify(reward_terms).
+  6. Both directions — false positive AND false negative. Did you test the REAL target or a stand-in?
+  7. Multi-seed + independent reproduction — mm_multiseed_check; am_witness from another agent.
+  8. Scope: state what you closed and did NOT close — mm_verify(claimed_scope, tested_scope).
+  9. Numeric + multiplicity hygiene — mm_verify (grim, multiple-comparisons).
+  10. Self-catch: "too good" is suspect first.
   If an LLM judge is involved, check it too (consistency / bias / swap / transitivity).
 
 THE RECORD: seal claims and actions (am_record target=<claim_id>); anchor externally
@@ -132,6 +137,10 @@ REMINDERS = {
         "is inconclusive; raise n or narrow scope.",
     "mm_falsifiability_check": "🪞 If the kill-condition tripped (FAIL), the claim is falsified by "
         'its OWN criterion → mm_retract it. If it did not trip, that\'s "not refuted", not "proven".',
+    "mm_prereg_lint": "🪞 Lint judges the seal's QUALITY, not just its presence. A FAIL here "
+        "(kill-condition leaked into `metric`, or a bar at/below chance) means the automated "
+        "checks can't fire — fix and re-seal under a NEW claim_id (first-write-wins). Run this "
+        "right before spending compute; it's the cheap machine-check that saves a KILL.",
     "mm_preflight": "🪞 This is a primitive — the MCP only judges GO/BLOCK. YOUR launcher / "
         "pre-commit hook must do the actual blocking; the MCP can't stop external compute or "
         "commits (by design, opt-in).",
@@ -162,17 +171,23 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
                    baseline: float = 0.5, pass_threshold: float = 0.6,
                    kill_condition: str | None = None, kill_threshold: dict | None = None,
                    depends_on: list[str] | None = None,
-                   metric_range: list | str | None = None, chance: float | None = None) -> dict:
+                   metric_range: list | str | None = None, chance: float | None = None,
+                   pre_seal_checks: list[str] | None = None) -> dict:
     """Seal a claim BEFORE measuring (preregistration). kill_condition/threshold = what falsifies it.
 
     For a non-[0,1] metric, declare metric_range (e.g. [0,100] for a %, or "unbounded" for a
     delta/span) + chance (the real chance level, e.g. 1/24≈0.042) so audit doesn't false-FAIL
-    or assume baseline 0.5. Omit for a plain [0,1] accuracy."""
-    return _remind("mm_preregister", mm.preregister(
+    or assume baseline 0.5. Omit for a plain [0,1] accuracy.
+
+    The response carries an automatic seal-quality lint (`lint` key): a FAIL there means
+    the compute gate will BLOCK this claim — fix and re-seal under a NEW claim_id."""
+    entry = mm.preregister(
         ledger_path, claim_id, metric=metric, min_n=min_n, baseline=baseline,
         pass_threshold=pass_threshold, kill_condition=kill_condition,
         kill_threshold=kill_threshold, depends_on=depends_on,
-        metric_range=metric_range, chance=chance))
+        metric_range=metric_range, chance=chance, pre_seal_checks=pre_seal_checks)
+    lint = _compact(_findings(mm._preseal_lint(entry)))
+    return _remind("mm_preregister", {**entry, "lint": lint})
 
 
 @mcp.tool()
@@ -215,6 +230,28 @@ def mm_falsifiability_check(ledger_path: str, claim_id: str,
     return _remind("mm_falsifiability_check",
                    str(mm.falsifiability_check(ledger_path, claim_id,
                                                reported_acc=reported_acc, am_ledger=am_ledger)))
+
+
+@mcp.tool()
+def mm_prereg_lint(ledger_path: str, claim_id: str | None = None) -> list[str]:
+    """🔍 Lint a sealed preregistration for QUALITY defects — the cheap machine-check to
+    run right before spending compute.
+
+    falsifiability_check / the compute gate ask 'does a kill-condition exist?'. This asks
+    'is the seal well-formed enough that the automated checks can actually fire, and is the
+    bar meaningful?' — the failure classes that leak silent compute:
+      • kill-condition prose leaked into the `metric` field (a malformed call) — the human
+        eye sees a criterion, the parser sees none  [FAIL]
+      • a quantified kill written as free text with no structured kill_threshold  [WARN]
+      • a pass bar sitting at or below chance  [FAIL]
+      • min_n below the small-sample floor  [WARN]
+      • no cheap pre-seal machine-checks declared (reachability / accounting / neutral-
+        control / manipulation / positive-control)  [INFO nudge]
+
+    claim_id=None lints every preregistration in the ledger. A FAIL means fix and re-seal
+    under a NEW claim_id (first-write-wins makes the old one uncorrectable)."""
+    return _remind("mm_prereg_lint",
+                   _compact(_findings(mm.prereg_lint(ledger_path, claim_id))))
 
 
 @mcp.tool()

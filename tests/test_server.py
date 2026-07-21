@@ -1,7 +1,7 @@
 """Unit + smoke tests for the unified Mirror Stack MCP server.
 
 Covers what a fresh install / reconnect must get right:
-  • all 18 tools register (drift detector — adding/removing a tool fails this);
+  • all 19 tools register (drift detector — adding/removing a tool fails this);
   • the loop-safe defaults (compact output, once-per-session reminders);
   • signal-preserving compaction — OK/INFO collapse, but a WARN/FAIL is NEVER dropped
     (a hidden negative is the cardinal sin this server exists to prevent);
@@ -16,7 +16,8 @@ import mirror_stack_mcp.server as s
 EXPECTED_TOOLS = {
     # 🪞 measure-mirror (claims)
     "mm_preregister", "mm_verify", "mm_audit", "mm_power_check",
-    "mm_falsifiability_check", "mm_leakage_check", "mm_multiseed_check",
+    "mm_falsifiability_check", "mm_prereg_lint", "mm_leakage_check",
+    "mm_multiseed_check",
     "mm_retract", "mm_anchor", "mm_anchor_bitcoin", "mm_anchor_upgrade",
     "mm_anchor_verify", "mm_preflight",
     # 🪪 action-mirror
@@ -37,10 +38,10 @@ def _write(path, entries):
 
 
 # ── registration / defaults ───────────────────────────────────────────────────
-def test_all_18_tools_registered():
+def test_all_19_tools_registered():
     names = _registered()
     assert names == EXPECTED_TOOLS, f"tool drift: {names ^ EXPECTED_TOOLS}"
-    assert len(names) == 18
+    assert len(names) == 19
 
 
 def test_defaults_are_loop_safe():
@@ -154,6 +155,68 @@ def test_preflight_unknown_gate(tmp_path):
     led = tmp_path / "mm.jsonl"
     _write(led, [{"claim_id": "c1", "metric": "acc", "kill_threshold": {"below": 0.5}}])
     assert s.mm_preflight(str(led), "c1", gate="bogus")["decision"] == "BLOCK"
+
+
+# ── mm_prereg_lint (seal-quality) + leaked-kill gate ──────────────────────────
+def test_prereg_lint_flags_leaked_kill_condition(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    # criterion sealed into `metric`, no kill fields — the self-catch #2 shape
+    _write(led, [{"claim_id": "gate0",
+                  "metric": "gene1 eq; KILL if delta < 0.03 across arms",
+                  "min_n": 200, "baseline": 0.5, "pass_threshold": 0.6}])
+    out = s.mm_prereg_lint(str(led), "gate0")
+    assert any("FAIL" in line and "leaked into" in line for line in out)
+
+
+def test_prereg_lint_clean_seal_has_no_warn_or_fail(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    s.mm_preregister(str(led), "good", metric="separation_d", min_n=240,
+                     kill_threshold={"metric": "d", "threshold": 0.1, "direction": "below"},
+                     pre_seal_checks=["reachability-smoke", "neutral-control"])
+    out = s.mm_prereg_lint(str(led), "good")
+    assert not [line for line in out if "WARN" in line or "FAIL" in line]
+
+
+def test_preregister_response_carries_auto_lint(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    r = s.mm_preregister(str(led), "c1", metric="acc", min_n=10,
+                         kill_threshold={"metric": "acc", "threshold": 0.55,
+                                         "direction": "below"})
+    assert "lint" in r
+    joined = " ".join(r["lint"])
+    assert "small-sample floor" in joined          # min_n=10 surfaces immediately
+
+
+def test_compute_gate_blocks_on_lint_fail_below_chance_bar(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    # well-formed kill fields, but the pass bar sits below chance → lint FAIL
+    s.mm_preregister(str(led), "c1", metric="acc", baseline=0.5, pass_threshold=0.45,
+                     kill_threshold={"metric": "acc", "threshold": 0.4,
+                                     "direction": "below"})
+    r = s.mm_preflight(str(led), "c1", gate="compute")
+    assert r["decision"] == "BLOCK"
+    assert "prereg-lint FAIL" in " ".join(r["reasons"])
+
+
+def test_compute_gate_go_passes_lint_check(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    s.mm_preregister(str(led), "c1", metric="acc", min_n=240,
+                     kill_threshold={"metric": "acc", "threshold": 0.55,
+                                     "direction": "below"},
+                     pre_seal_checks=["reachability-smoke"])
+    r = s.mm_preflight(str(led), "c1", gate="compute")
+    assert r["decision"] == "GO"
+    assert any("prereg-lint: no FAIL" in c for c in r["checks"])
+
+
+def test_compute_gate_reports_leaked_kill_condition(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    _write(led, [{"claim_id": "gate0",
+                  "metric": "gene1 eq; KILL if delta < 0.03 across arms",
+                  "min_n": 200, "baseline": 0.5, "pass_threshold": 0.6}])
+    r = s.mm_preflight(str(led), "gate0", gate="compute")
+    assert r["decision"] == "BLOCK"
+    assert "leaked into" in " ".join(r["reasons"])
 
 
 # ── cross-package integration: a real mirror dep must work end-to-end ──────────

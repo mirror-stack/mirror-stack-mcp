@@ -23,8 +23,14 @@ import sys
 
 
 def scan_claim(ledger_path, claim_id):
-    """Return (prereg_entry_or_None, retracted_bool) for claim_id in a ledger."""
-    prereg, retracted = None, False
+    """Return (prereg_entry_or_None, retracted_bool, leaked_entry_or_None) for claim_id.
+
+    leaked_entry is a preregistration that carries NO kill fields but whose `metric`
+    reads like a kill-condition — i.e. the criterion leaked into the wrong field from a
+    malformed call. It is not a valid prereg (compute stays BLOCKed), but naming it lets
+    the gate report the real reason instead of a misleading 'no preregistration'.
+    """
+    prereg, retracted, leaked = None, False, None
     if os.path.exists(ledger_path):
         with open(ledger_path, encoding="utf-8") as fh:
             for line in fh:
@@ -42,12 +48,16 @@ def scan_claim(ledger_path, claim_id):
                 elif e.get("_type") is None and ("kill_threshold" in e or "kill_condition" in e) \
                         and e.get("metric") != "protocol_amendment":
                     prereg = e
-    return prereg, retracted
+                elif e.get("_type") is None and e.get("metric") not in (None, "protocol_amendment"):
+                    from measure_mirror import mm
+                    if leaked is None and mm._looks_like_kill_prose(e.get("metric", "")):
+                        leaked = e
+    return prereg, retracted, leaked
 
 
 def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=None):
     """Pure GO/BLOCK decision. Returns {decision, gate, claim_id, reasons, checks}."""
-    prereg, retracted = scan_claim(ledger_path, claim_id)
+    prereg, retracted, leaked = scan_claim(ledger_path, claim_id)
     checks: list[str] = []
 
     def out(decision, reasons):
@@ -55,6 +65,12 @@ def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=N
                 "reasons": reasons, "checks": checks}
 
     if prereg is None:
+        if leaked is not None:
+            return out("BLOCK", [
+                "a preregistration exists but its kill-condition leaked into the `metric` "
+                f"field ({str(leaked.get('metric'))[:60]!r}...) — the automated checks can't "
+                "parse it. Re-seal under a NEW claim_id with the criterion in kill_condition= "
+                "(mm_prereg_lint pinpoints this)."])
         return out("BLOCK", ["no sealed preregistration for this claim — seal one "
                              "(mm_preregister with a kill-condition) before proceeding"])
     has_kill = bool(prereg.get("kill_threshold") or prereg.get("kill_condition"))
@@ -64,6 +80,18 @@ def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=N
         if not has_kill:
             return out("BLOCK", ["preregistration has no kill-condition (unfalsifiable) — "
                                  "add one before spending compute"])
+        # Seal-quality lint: a FAIL (e.g. a pass bar at/below chance) means the
+        # automated checks can't do their job — compute would be spent against a
+        # meaningless bar. WARN/INFO inform but don't block.
+        from measure_mirror import mm
+        lint = mm._preseal_lint(prereg)
+        fails = [f for f in lint if f.level == "FAIL"]
+        warns = [f for f in lint if f.level == "WARN"]
+        if warns:
+            checks.append("prereg-lint: " + "; ".join(f.msg for f in warns))
+        if fails:
+            return out("BLOCK", ["prereg-lint FAIL — " + " | ".join(f.msg for f in fails)])
+        checks.append("prereg-lint: no FAIL")
         return out("GO", ["sealed preregistration with a kill-condition is present"])
 
     if gate == "publish":
