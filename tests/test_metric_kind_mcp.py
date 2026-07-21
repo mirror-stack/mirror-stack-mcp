@@ -1,6 +1,9 @@
 """The MCP wrappers must forward metric_range/chance to measure-mirror's audit so a
 percentage / delta claim doesn't false-FAIL through the server (P0). Thin pass-through;
 the probe logic itself is covered in measure-mirror's own suite."""
+import pytest
+
+pytest.importorskip("mcp", reason="mcp package not installed — server tests need it; core gate/verify tests run without it")
 from mirror_stack_mcp import server
 
 

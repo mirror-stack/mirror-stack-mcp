@@ -11,6 +11,9 @@ Covers what a fresh install / reconnect must get right:
 """
 import json
 
+import pytest
+
+pytest.importorskip("mcp", reason="mcp package not installed — server tests need it; core gate/verify tests run without it")
 import mirror_stack_mcp.server as s
 
 EXPECTED_TOOLS = {

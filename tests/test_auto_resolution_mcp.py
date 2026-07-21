@@ -3,6 +3,9 @@ self-evaluate a kill-condition from a sealed resolution (P1). Thin pass-through;
 the recovery logic itself is covered in measure-mirror's own suite."""
 import json
 
+import pytest
+
+pytest.importorskip("mcp", reason="mcp package not installed — server tests need it; core gate/verify tests run without it")
 from mirror_stack_mcp import server
 
 
