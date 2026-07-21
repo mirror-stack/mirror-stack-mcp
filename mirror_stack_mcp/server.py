@@ -43,7 +43,7 @@ BEFORE spending compute (seal first):
      neutral-control / manipulation-check / positive-control).
   2. Power: is n big enough to detect the effect? mm_power_check (design-time).
   3. Lint the seal — mm_prereg_lint (auto in the mm_preregister response). A FAIL
-     (kill-condition leaked into the metric field, bar at/below chance) means the
+     (kill-condition leaked into the metric field, bar at/below declared chance) means the
      automated checks can't fire: fix and re-seal under a NEW claim_id.
 
 BEFORE reporting (verify before speaking):
@@ -70,7 +70,7 @@ property no tool can give). Map: stack/PILLARS.md. The stack also ships an outsi
 NORMATIVE FORMAT: the ledger format is defined by MIRROR-SPEC v1.0 (measure-mirror
 docs/SPEC.md, ratified & frozen 2026-07-02) — these tools are a reference implementation.
 KNOWN ILLUSIONS: before trusting a surprising result (good OR bad), scan the catalog of
-measurement illusions (measure-mirror catalog/, 45 real sealed cases: gaming, self-catch,
+measurement illusions (measure-mirror catalog/, 46 real sealed cases: gaming, self-catch,
 false-negative guards, contamination). When you retract, consider adding a specimen.
 """
 
@@ -138,7 +138,7 @@ REMINDERS = {
     "mm_falsifiability_check": "🪞 If the kill-condition tripped (FAIL), the claim is falsified by "
         'its OWN criterion → mm_retract it. If it did not trip, that\'s "not refuted", not "proven".',
     "mm_prereg_lint": "🪞 Lint judges the seal's QUALITY, not just its presence. A FAIL here "
-        "(kill-condition leaked into `metric`, or a bar at/below chance) means the automated "
+        "(kill-condition leaked into `metric`, or a bar at/below declared chance) means the automated "
         "checks can't fire — fix and re-seal under a NEW claim_id (first-write-wins). Run this "
         "right before spending compute; it's the cheap machine-check that saves a KILL.",
     "mm_preflight": "🪞 This is a primitive — the MCP only judges GO/BLOCK. YOUR launcher / "

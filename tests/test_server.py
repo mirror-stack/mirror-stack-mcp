@@ -192,13 +192,25 @@ def test_preregister_response_carries_auto_lint(tmp_path):
 
 def test_compute_gate_blocks_on_lint_fail_below_chance_bar(tmp_path):
     led = tmp_path / "mm.jsonl"
-    # well-formed kill fields, but the pass bar sits below chance → lint FAIL
-    s.mm_preregister(str(led), "c1", metric="acc", baseline=0.5, pass_threshold=0.45,
+    # well-formed kill fields, but the pass bar sits at/below the DECLARED chance → FAIL.
+    # (chance must be declared — `baseline` alone is a comparison arm, not the floor.)
+    s.mm_preregister(str(led), "c1", metric="acc", chance=0.5, pass_threshold=0.45,
                      kill_threshold={"metric": "acc", "threshold": 0.4,
                                      "direction": "below"})
     r = s.mm_preflight(str(led), "c1", gate="compute")
     assert r["decision"] == "BLOCK"
     assert "prereg-lint FAIL" in " ".join(r["reasons"])
+
+
+def test_compute_gate_does_not_block_on_baseline_alone(tmp_path):
+    led = tmp_path / "mm.jsonl"
+    # pass=0.45 < baseline=0.5 but NO declared chance → must GO (A3 false-positive guard).
+    s.mm_preregister(str(led), "c1", metric="acc", baseline=0.5, pass_threshold=0.45,
+                     min_n=200,
+                     kill_threshold={"metric": "acc", "threshold": 0.4,
+                                     "direction": "below"})
+    r = s.mm_preflight(str(led), "c1", gate="compute")
+    assert r["decision"] == "GO"
 
 
 def test_compute_gate_go_passes_lint_check(tmp_path):

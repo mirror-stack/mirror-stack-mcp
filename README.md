@@ -43,7 +43,7 @@ Windsurf, any MCP client.
 | `mm_audit` | 🪞 | audit a result vs its sealed registration |
 | `mm_power_check` | 🪞 | false-negative guard — is n big enough? (design-time) |
 | `mm_falsifiability_check` | 🪞 | Popper gate — kill-condition registered & not tripped? |
-| `mm_prereg_lint` | 🪞 | seal *quality* lint (㉗) — leaked kill-condition, bar at/below chance, unstructured kill, low n, undeclared pre-seal checks; the compute gate BLOCKs on a lint FAIL |
+| `mm_prereg_lint` | 🪞 | seal *quality* lint (㉗) — leaked kill-condition, bar at/below declared chance, unstructured kill, low n, undeclared pre-seal checks; the compute gate BLOCKs on a lint FAIL |
 | `mm_leakage_check` | 🪞 | train∩test contamination |
 | `mm_multiseed_check` | 🪞 | unstable signal / lucky seed |
 | `mm_retract` | 🪞 | chain-linked retraction (cannot be silently deleted) |
