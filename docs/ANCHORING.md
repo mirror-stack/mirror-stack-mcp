@@ -108,7 +108,7 @@ ots info manifest.json.ots        # shows BitcoinBlockHeaderAttestation(<height>
 ```
 
 A self-contained re-runnable script (`ots_anchor.sh`) lives alongside the standard ledgers in the
-[Mirror Stack conventions](https://github.com/bhyi4/measure-mirror/tree/main/stack).
+[Mirror Stack conventions](https://github.com/mirror-stack/measure-mirror/tree/main/stack).
 
 ## Notes
 

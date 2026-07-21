@@ -6,7 +6,7 @@ stack-level verify-all.
 
 💬 **[Discussions](https://github.com/orgs/mirror-stack/discussions)** — questions · ideas · independent reproductions welcome.
 
-🔎 **[See it on real records → the Sealed-Record Reading Room](https://bhyi4.github.io/mirror-witness/ledger/)** — a
+🔎 **[See it on real records → the Sealed-Record Reading Room](https://mirror-stack.github.io/mirror-witness/ledger/)** — a
 human-readable viewer over actual sealed ledgers: each experiment shows the kill-condition sealed *before* the run,
 the verdict (pass / kill / retracted / inconclusive), and every number auto-recomputed from the ledger. You can even
 tamper with a sealed value in the browser and watch the hash break. Shows what the discipline looks like in practice,
@@ -187,6 +187,6 @@ The tamper-evidence comes from the **hash chain + external witness**, not from t
 so exposing the action ledger over MCP is fine: an edit still breaks the chain. This server makes
 honesty *easy to prove*; it does not (and cannot) prevent an agent that simply never records.
 
-See **[what the stack guarantees — and the one it can't](https://github.com/bhyi4/measure-mirror/blob/main/stack/PILLARS.md)**
+See **[what the stack guarantees — and the one it can't](https://github.com/mirror-stack/measure-mirror/blob/main/stack/PILLARS.md)**
 (the four pillars: integrity · non-erasure · falsifiability · verifiability), and the
-[Mirror Stack conventions + case study](https://github.com/bhyi4/measure-mirror/tree/main/stack).
+[Mirror Stack conventions + case study](https://github.com/mirror-stack/measure-mirror/tree/main/stack).

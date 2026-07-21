@@ -6,7 +6,7 @@ so "which one is authoritative?" has a written answer.
 
 > **Ledger format authority**: the normative definition of the ledger format
 > itself (seal algorithm, chain rules, record types, verification levels) is
-> **[MIRROR-SPEC v1.0](https://github.com/bhyi4/measure-mirror/blob/main/docs/SPEC.md)**
+> **[MIRROR-SPEC v1.0](https://github.com/mirror-stack/measure-mirror/blob/main/docs/SPEC.md)**
 > (ratified & frozen 2026-07-02). Everything below — both surfaces, all
 > verifiers — is a *reference implementation* of that spec; where code and
 > spec disagree, the code is wrong. Conformance vectors: measure-mirror
@@ -16,7 +16,7 @@ so "which one is authoritative?" has a written answer.
 
 | Surface | Lives in | Owns |
 |---|---|---|
-| **measure-mirror `stack/`** | [`bhyi4/measure-mirror`](https://github.com/bhyi4/measure-mirror) `stack/` | the stack **conventions + honesty docs** (`MIRROR_STACK.md`, `DISCIPLINE.md`, `PILLARS.md`, the case study); **`verify_self.py`** (one claims ledger: L1 self-chain + L3 anchors, zero external tool); **`verify_all.py`** (the orchestrator — adds L2 cross-witness *between* ledgers via `am`); `tombstone.py` |
+| **measure-mirror `stack/`** | [`mirror-stack/measure-mirror`](https://github.com/mirror-stack/measure-mirror) `stack/` | the stack **conventions + honesty docs** (`MIRROR_STACK.md`, `DISCIPLINE.md`, `PILLARS.md`, the case study); **`verify_self.py`** (one claims ledger: L1 self-chain + L3 anchors, zero external tool); **`verify_all.py`** (the orchestrator — adds L2 cross-witness *between* ledgers via `am`); `tombstone.py` |
 | **mirror-stack-mcp** | this repo | the **agent MCP server** (`server.py`, 19 tools); the **`mirror-stack-gate`** enforcer CLI (`gate.py`); the **zero-config outsider** `mirror-stack-verify` CLI (`verify.py`); Bitcoin/OTS anchoring (`ots_anchor.py`) |
 
 Rule of thumb: **measure-mirror `stack/` = the conventions and the self/orchestrated
