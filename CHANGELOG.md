@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.10] — 2026-08-05
+
+### Changed
+- **Pins now point at the commits their version labels claim.** The
+  `action-mirror` and `provenance-mirror` pins were both commented `# v0.2.0`
+  while sitting **two commits before** that tag. The two missing commits were
+  the org migration (`bhyi4/` → `mirror-stack/`) and the SPEC v1.1 reference
+  update, so an install got pre-migration docs under a v0.2.0 label — a claim
+  the installer had no way to see was false.
+- `measure-mirror` pin bumped **v0.28.1 → v0.29.0**: adds ㉘
+  `subspace_claim_check` (a declaration auditor, holdout PASS 22/22 after two
+  sealed kills), `Finding.data`, and a fix for a latent `KeyError` in the
+  finding formatters on `INFO`/`N/A` levels.
+
+### Added
+- `tests/test_pins_are_releases.py` — each pin's SHA is checked against the
+  GitHub tag its comment names, plus offline checks that every pin is a full
+  40-hex lowercase SHA and carries a version label. Skips when the API is
+  unreachable rather than failing offline. Reverse-verified: restoring the old
+  `action-mirror` pin makes it fail.
+
+### Note
+This server exposes a curated 19 tools, not all 28 measure-mirror probes —
+`mm_verify` is the umbrella for the rest. ㉘ is reachable through it; no new
+tool was added, by design.
+
+---
+
 ## [0.2.9] — 2026-07-21
 
 ### Changed
