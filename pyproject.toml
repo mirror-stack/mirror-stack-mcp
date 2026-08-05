@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Mother Seara", email = "ruinbl82@gmail.com" }]
 dependencies = [
-    "mcp>=1.0",
+    "mcp>=1.0,<2",   # upper bound: mcp 2.x removed mcp.server.fastmcp (same fix as yeoul)
     # Pinned to exact RELEASE commits for reproducible installs. An unpinned git
     # dep silently tracks each mirror's default branch, so an install made before
     # a mirror's release freezes on whatever was HEAD then and never refreshes —
