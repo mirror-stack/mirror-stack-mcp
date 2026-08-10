@@ -23,7 +23,7 @@ dependencies = [
     # action-mirror and provenance-mirror pins were labelled "v0.2.0" while
     # sitting TWO commits before that tag, so an install got the pre-org-migration
     # docs (stale `bhyi4/` self-references, SPEC v1.0) under a v0.2.0 label.
-    "measure-mirror @ git+https://github.com/mirror-stack/measure-mirror@b3b6dec8893c8e645ad0c9d50d08fc3c9417eee1",      # v0.29.0 — ㉘ subspace_claim_check (declaration auditor, holdout PASS 22/22); Finding.data; INFO/N-A formatter crash fixed; CHANGELOG + catalog-count sync guards
+    "measure-mirror @ git+https://github.com/mirror-stack/measure-mirror@21ca28937306a6e094c6505f79810c204eee5173",      # v0.32.0 — ㉘ vacuous both-directions on real runs (computed matched-null certificate); catalog count sync 72 + KO count guards
     "action-mirror @ git+https://github.com/mirror-stack/action-mirror@15b0c5b775e916a22d837ddc0714e85aef7ec74e",        # v0.2.0 — full 64-hex SHA-256 seals (security; legacy 16-hex verify via prefix match); org migration + SPEC v1.1 references
     "provenance-mirror @ git+https://github.com/mirror-stack/provenance-mirror@2d1d52d280352567410d140270f7714571bf784f",  # v0.2.0 — full 64-hex SHA-256 seals (security; legacy 16-hex verify via prefix match); org migration + SPEC v1.1 references
 ]
