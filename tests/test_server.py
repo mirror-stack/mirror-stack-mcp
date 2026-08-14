@@ -175,7 +175,8 @@ def test_prereg_lint_clean_seal_has_no_warn_or_fail(tmp_path):
     led = tmp_path / "mm.jsonl"
     s.mm_preregister(str(led), "good", metric="separation_d", min_n=240,
                      kill_threshold={"metric": "d", "threshold": 0.1, "direction": "below"},
-                     pre_seal_checks=["reachability-smoke", "neutral-control"])
+                     pre_seal_checks=[{"name": "reachability-smoke", "result": "reachable"},
+                                      {"name": "neutral-control", "result": "not_fired", "n": 30}])
     out = s.mm_prereg_lint(str(led), "good")
     assert not [line for line in out if "WARN" in line or "FAIL" in line]
 
