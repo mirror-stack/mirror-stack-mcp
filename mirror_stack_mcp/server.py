@@ -358,7 +358,19 @@ def pm_verify(file_path: str, ledger_path: str = "pm_ledger.jsonl",
 @mcp.tool()
 def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
                      am_ledger: str | None = None, am_peer_name: str | None = None) -> dict:
-    """Verify the whole stack in one call: mm chain (L1) + anchors (L3) + cross-witness (L2)."""
+    """Verify the layers you point it at: mm chain (L1) + anchors (L3) + cross-witness (L2).
+
+    SCOPE — read this before quoting the verdict:
+      · It verifies the ledgers named in THESE ARGUMENTS. It does not read `stack.json`,
+        so it cannot tell you about ledgers you did not pass. For directory-wide,
+        default-include coverage use the `verify_all.py` orchestrator instead.
+      · L3 runs only with `anchor_dir`; L2 only with BOTH `am_ledger` and `am_peer_name`.
+        A layer that did not run is reported as `skipped`, never counted as passed.
+
+    This docstring used to say "the whole stack". It never was: passing `am_ledger`
+    without `am_peer_name` skipped the witness layer in silence and still returned
+    ALL OK, so the am chain could go permanently unmeasured behind a green verdict.
+    """
     out, ok = [], True
 
     def add(level, layer, name, msg):
@@ -366,9 +378,13 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
         ok = ok and level
         out.append({"ok": level, "layer": layer, "name": name, "msg": msg})
 
-    bad = [str(f) for f in mm.verify_chain(mm_ledger)
-           if getattr(f, "level", "OK") not in ("OK", "INFO")]
-    add(not bad, "L1 chain", Path(mm_ledger).name, "seals valid" if not bad else str(bad))
+    findings = mm.verify_chain(mm_ledger)
+    bad = [str(f) for f in findings if getattr(f, "level", "OK") not in ("OK", "INFO")]
+    # Say how many seals were checked. "seals valid" is also true of an empty ledger.
+    n_entries = sum(1 for l in Path(mm_ledger).read_text(encoding="utf-8",
+                                                         errors="replace").splitlines() if l.strip())
+    add(not bad, "L1 chain", Path(mm_ledger).name,
+        f"seals valid ({n_entries} entries checked)" if not bad else str(bad))
 
     if anchor_dir:
         for af in sorted(Path(anchor_dir).glob("anchor_*.json")):
@@ -385,14 +401,33 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
                 extended = len(entries) >= n and str(entries[n - 1].get("seal", "")) == a["head_seal"]
                 add(extended, "L3 anchor", af.name, "extended" if extended else "REPLACED?")
 
+    skipped = []
     if am_ledger and am_peer_name:
         f = am.verify_peer(am_ledger, mm_ledger, peer_name=am_peer_name)
         good = getattr(f, "level", "OK") in ("OK", "INFO")
         add(good, "L2 witness", am_peer_name, str(f))
-
-    return _remind("stack_verify_all",
-                   {"verdict": "ALL OK" if ok else "FAILURES", "ok": ok,
-                    "checks": out, "passed": sum(c["ok"] for c in out), "total": len(out)})
+    elif am_ledger:
+        # Was a silent `pass`: the caller handed over a witness ledger, the layer never
+        # ran, and the verdict still came back ALL OK. A skipped layer must be visible.
+        skipped.append({"layer": "L2 witness",
+                        "why": "am_ledger given but am_peer_name missing — the witness layer "
+                               "did not run; this verdict says nothing about the am chain"})
+    elif am_peer_name:
+        skipped.append({"layer": "L2 witness",
+                        "why": "am_peer_name given but am_ledger missing — the witness layer did not run"})
+    result = {"verdict": "ALL OK" if ok else "FAILURES", "ok": ok, "checks": out,
+              "passed": sum(c["ok"] for c in out), "total": len(out),
+              "scope": {"mm_ledger": Path(mm_ledger).name,
+                        "layers_run": sorted({c["layer"] for c in out}),
+                        "layers_not_requested": [] if anchor_dir else ["L3 anchor"],
+                        "layers_skipped": skipped}}
+    if skipped:
+        # `skipped` means REQUESTED-but-did-not-run, which is the defect this fixes.
+        # Not passing `anchor_dir` at all is not that — you did not ask for L3, so it is
+        # reported under `layers_not_requested` and does NOT make the verdict partial.
+        # Callers that read only `verdict` exist, so this has to show up there.
+        result["verdict"] += f" (partial: {len(skipped)} requested layer(s) did not run)"
+    return _remind("stack_verify_all", result)
 
 
 def main():
