@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.11] — 2026-08-19
+
+### Fixed
+- **`stack_verify_all` skipped the witness layer in silence.** Passing `am_ledger`
+  without `am_peer_name` fell through `if am_ledger and am_peer_name:` with no
+  branch, so the L2 cross-witness check never ran — and the call still returned
+  `ALL OK`. The am chain could therefore go permanently unmeasured behind a green
+  verdict, which is the one thing a verifier must never do.
+
+  A requested-but-unrun layer is now reported in `scope.layers_skipped` and marks
+  the verdict `ALL OK (partial: N requested layer(s) did not run)`. Not passing
+  `anchor_dir` is *not* that — you did not ask for L3, so it is listed under
+  `scope.layers_not_requested` and leaves the verdict clean.
+
+- **The docstring promised "the whole stack".** It never verified the whole stack:
+  it verifies the ledgers passed in these arguments and does not read `stack.json`,
+  so it cannot know about ledgers the caller did not name. Said so, and pointed at
+  the `verify_all.py` orchestrator for directory-wide coverage.
+
+- **`seals valid` now reports how many entries it checked.** That string is also
+  true of a ledger with nothing in it.
+
+---
+
 ## [0.2.10] — 2026-08-05
 
 ### Changed
