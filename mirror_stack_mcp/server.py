@@ -23,6 +23,7 @@ from actmirror import am
 from provmirror import pm
 
 from . import ots_anchor
+from . import __version__
 
 DISCIPLINE = """\
 🪞🔎🪪 MIRROR STACK — discipline for honest measurement (read on connect).
@@ -75,6 +76,21 @@ false-negative guards, contamination). When you retract, consider adding a speci
 """
 
 mcp = FastMCP("mirror-stack", instructions=DISCIPLINE)
+
+# FastMCP (1.27.2) takes no `version`, so `Server.version` stays None and the lowlevel
+# server answers `initialize` with `pkg_version("mcp")` — every FastMCP server on earth
+# reports the SDK's version as its own. A client asking this server what it is got
+# "1.27.2"; an outside bug report on 2026-08-24 read a different number on Windows and
+# took it for a platform difference. It was the SDK version there too.
+#
+# Set after construction on purpose: `initialize` reads this lazily, so assigning here is
+# enough and there is no constructor hook to use instead.
+#
+# 🔴 NOT `importlib.metadata.version("mirror-stack-mcp")`: an editable install on the
+# author's machine has 0.1.0 frozen in its dist-info while the source says 0.2.11. That
+# route swaps one wrong number for another and looks fixed. The source is the only truth
+# the package ships with.
+mcp._mcp_server.version = __version__
 
 
 def _findings(fs):
