@@ -243,3 +243,67 @@ def test_stack_verify_all_on_a_freshly_sealed_ledger(tmp_path):
     r = s.stack_verify_all(mm_ledger=str(led))
     assert r["ok"] is True and r["verdict"] == "ALL OK"
     assert r["passed"] >= 1
+
+
+# ── the wire schema, not just the function ───────────────────────────────────
+# Every test above calls a tool as a plain Python function, which skips the MCP
+# validation layer entirely. That is how `pre_seal_checks` could accept objects
+# in-process for months while every real client got "Input should be a valid
+# string": the type hint said list[str], the library had long outgrown it, and
+# nothing here measured the schema a client actually receives.
+# Measured 08-28 from [자생]'s report (inbox 0826-145737).
+
+_STRUCTURED = [{"name": "neutral-control", "result": "not_fired", "n": 30},
+               "positive-control"]                 # object + bare name, mixed
+
+
+def _arg_model(name):
+    tool = [t for t in s.mcp._tool_manager.list_tools() if t.name == name][0]
+    return tool.fn_metadata.arg_model
+
+
+def _types_under(node):
+    """Every `type` value anywhere in a JSON-schema subtree."""
+    out = []
+    if isinstance(node, dict):
+        t = node.get("type")
+        out += [t] if isinstance(t, str) else []
+        for v in node.values():
+            out += _types_under(v)
+    elif isinstance(node, list):
+        for v in node:
+            out += _types_under(v)
+    return out
+
+
+def test_preregister_wire_schema_admits_structured_pre_seal_checks():
+    # The lint (⑫h) tells the author to seal each check as an object. The wire
+    # must be able to carry what the lint asks for, or the advice is unfollowable.
+    _arg_model("mm_preregister").model_validate(
+        {"ledger_path": "x", "claim_id": "c", "metric": "acc",
+         "pre_seal_checks": _STRUCTURED})
+
+
+def test_preregister_published_schema_shows_the_object_form():
+    # What the client READS, not only what the validator accepts — a client that
+    # believes the schema never sends the object at all.
+    tool = [t for t in s.mcp._tool_manager.list_tools()
+            if t.name == "mm_preregister"][0]
+    types = _types_under(tool.parameters["properties"]["pre_seal_checks"])
+    assert "object" in types, tool.parameters["properties"]["pre_seal_checks"]
+
+
+def test_the_wire_schema_check_can_actually_fail():
+    # Positive control on the instrument: the same payload must be REJECTED under
+    # the narrow hint this fix replaced. Without this, the two tests above would
+    # stay green even if they were validating nothing.
+    from mcp.server.fastmcp.utilities.func_metadata import func_metadata
+    from pydantic import ValidationError
+
+    def narrow(ledger_path: str, claim_id: str, metric: str,
+               pre_seal_checks: list[str] | None = None) -> dict: ...
+
+    with pytest.raises(ValidationError):
+        func_metadata(narrow).arg_model.model_validate(
+            {"ledger_path": "x", "claim_id": "c", "metric": "acc",
+             "pre_seal_checks": _STRUCTURED})
