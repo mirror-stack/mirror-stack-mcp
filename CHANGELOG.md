@@ -43,6 +43,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   green even if they validated nothing. Both were confirmed to fail on the old hint before
   this was committed.
 
+- **The response now says when a call CREATED the ledger instead of appending to one.**
+  measure-mirror 0.41.0 taught its CLI to refuse creating a ledger without `--new-ledger`.
+  That gate lives in `main()`; every tool here goes through the Python API and misses it
+  entirely — so the two lanes reported on 2026-08-26 sealing into unaudited ledgers were
+  both on *this* path, and the fix never reached them.
+
+  Blocking the API is not the answer: it would stop every lane mid-seal for a mistake most
+  callers are not making. So this does not block. `mm_preregister`, `mm_retract`,
+  `am_record`, `am_witness` and `pm_verify` add a `⚠️ new_ledger_created` field naming the
+  **absolute** path, and `mm_preregister` also raises a `㉘ ledger-birth` WARN inside `lint`
+  (WARN survives output compaction; everything else is collapsed to a count).
+
+  This is the gap nothing else in the stack can close: the chain of a brand-new ledger is
+  perfectly intact, so every integrity check is green and no probe has any reason to
+  mention that the file is new. The only moment the information exists is the call that
+  creates it.
+
+  A negative control ships with it — the notice must NOT fire when appending, or it is
+  noise, and noise is what a reader learns to skip.
+
 ---
 
 ## [0.2.12] — 2026-08-28

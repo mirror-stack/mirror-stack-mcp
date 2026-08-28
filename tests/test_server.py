@@ -307,3 +307,51 @@ def test_the_wire_schema_check_can_actually_fail():
         func_metadata(narrow).arg_model.model_validate(
             {"ledger_path": "x", "claim_id": "c", "metric": "acc",
              "pre_seal_checks": _STRUCTURED})
+
+
+# ── created vs appended ──────────────────────────────────────────────────────
+# The CLI gate added in measure-mirror 0.41.0 lives in main(); every tool here
+# goes through the Python API and misses it entirely. Blocking the API would stop
+# every lane mid-seal, so the response says so instead. What matters is that it
+# says so ONLY when the ledger is actually new — a notice that always fires is
+# noise, and noise is what a reader learns to skip.
+
+def test_preregister_says_so_when_it_creates_the_ledger(tmp_path):
+    led = tmp_path / "typo.jsonl"
+    assert not led.exists()
+    r = s.mm_preregister(str(led), "c1", metric="acc", min_n=240,
+                         kill_threshold={"metric": "acc", "threshold": 0.55,
+                                         "direction": "below"},
+                         pre_seal_checks=[{"name": "neutral-control",
+                                           "result": "not_fired"}])
+    assert s._BIRTH_KEY in r
+    assert str(led.resolve()) in r[s._BIRTH_KEY]
+    # and it survives compaction, which keeps WARN verbatim and collapses the rest
+    assert any("ledger-birth" in line and "WARN" in line for line in r["lint"])
+
+
+def test_preregister_is_silent_when_it_appends(tmp_path):
+    # negative control: the notice must not fire on the normal path, or it means nothing.
+    led = tmp_path / "real.jsonl"
+    s.mm_preregister(str(led), "c1", metric="acc", min_n=240,
+                     kill_threshold={"metric": "acc", "threshold": 0.55,
+                                     "direction": "below"})
+    r = s.mm_preregister(str(led), "c2", metric="acc", min_n=240,
+                         kill_threshold={"metric": "acc", "threshold": 0.55,
+                                         "direction": "below"})
+    assert s._BIRTH_KEY not in r
+    assert not any("ledger-birth" in line for line in r["lint"])
+
+
+def test_am_record_says_so_when_it_creates_the_ledger(tmp_path):
+    led = tmp_path / "actions.jsonl"
+    r = s.am_record(str(led), agent="t", action="a")
+    assert s._BIRTH_KEY in r
+    r2 = s.am_record(str(led), agent="t", action="b")
+    assert s._BIRTH_KEY not in r2          # negative control on the same file
+
+
+def test_retract_says_so_when_it_creates_the_ledger(tmp_path):
+    led = tmp_path / "r.jsonl"
+    r = s.mm_retract(str(led), "never-registered", reason="wrong ledger")
+    assert s._BIRTH_KEY in r
