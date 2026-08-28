@@ -188,12 +188,18 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
                    kill_condition: str | None = None, kill_threshold: dict | None = None,
                    depends_on: list[str] | None = None,
                    metric_range: list | str | None = None, chance: float | None = None,
-                   pre_seal_checks: list[str] | None = None) -> dict:
+                   pre_seal_checks: list[str | dict] | None = None) -> dict:
     """Seal a claim BEFORE measuring (preregistration). kill_condition/threshold = what falsifies it.
 
     For a non-[0,1] metric, declare metric_range (e.g. [0,100] for a %, or "unbounded" for a
     delta/span) + chance (the real chance level, e.g. 1/24≈0.042) so audit doesn't false-FAIL
     or assume baseline 0.5. Omit for a plain [0,1] accuracy.
+
+    pre_seal_checks entries may be a bare check name, or an object recording what the
+    check returned — {"name": "neutral-control", "result": "not_fired", "n": 30}. A bare
+    name declares work without recording it, so the lint WARNs (⑫h) and no later audit can
+    aggregate its outcome. Writing the result into the string instead clears neither: the
+    WARN stands, and the check name stops being recognised.
 
     The response carries an automatic seal-quality lint (`lint` key): a FAIL there means
     the compute gate will BLOCK this claim — fix and re-seal under a NEW claim_id."""

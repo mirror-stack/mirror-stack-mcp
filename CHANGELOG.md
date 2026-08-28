@@ -5,6 +5,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.13] — 2026-08-28
+
+### Fixed
+- **`mm_preregister` told clients that pre-seal checks must be strings, while its own lint
+  told them to send objects.** The published schema carried
+  `pre_seal_checks: {items: {"type": "string"}}`, derived faithfully from a `list[str]`
+  type hint that measure-mirror's library had long outgrown. So a client that followed the
+  ⑫h advice — *"Seal each as an object instead: {'name': …, 'result': …}"* — was rejected
+  by pydantic before the call ever reached the function:
+  `Input should be a valid string [type=string_type]`.
+
+  The obvious workaround clears nothing. Writing the result into the string
+  (`"neutral-control: not_fired — 30 runs"`) still draws the same WARN — the lint keys on
+  the entry being a bare string, not on its content — and additionally makes the check name
+  unrecognised, so no later audit can aggregate that check by name. Every route was a dead
+  end, and a WARN nobody can act on is a WARN readers learn to skip.
+
+  Reported by another lane on 2026-08-26 (which could not test the object form: sealing is
+  append-only and they would not risk a failed attempt in their ledger). Reproduced and
+  measured here 2026-08-28. 🔴 The rejection happens at the validation layer, so **nothing
+  is written** — the ledger file was not even created. That fear was unfounded, and worth
+  saying out loud, because it is what kept the interface unmeasured for two days.
+
+  The hint is now `list[str | dict] | None`, and the tool description states the object form.
+
+### Added
+- Three tests covering **the wire, not just the function**. Every existing test called these
+  tools as plain Python functions, which skips MCP validation entirely — that is precisely
+  how this shipped: `test_prereg_lint_clean_seal_has_no_warn_or_fail` had been passing
+  objects to `mm_preregister` and going green while every real client was rejected. The new
+  tests validate through the server's own arg model and assert the published schema shows
+  the object form.
+
+  🔬 One of them is a **positive control on the instrument**: it asserts the same payload is
+  REJECTED under the narrow hint this release replaces. Without it the other two would stay
+  green even if they validated nothing. Both were confirmed to fail on the old hint before
+  this was committed.
+
+---
+
 ## [0.2.12] — 2026-08-28
 
 ### Fixed
