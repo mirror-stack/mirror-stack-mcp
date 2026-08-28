@@ -5,6 +5,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.12] — 2026-08-28
+
+### Fixed
+- **The server told clients the SDK's version instead of its own.** FastMCP (1.27.2) takes
+  no `version`, so `Server.version` stayed `None` and the lowlevel server answered
+  `initialize` with `pkg_version("mcp")` — every FastMCP server on earth reports the SDK's
+  version as its own. A client asking this server what it was got `1.27.2`; an outside bug
+  report on 2026-08-24 read a different number on Windows and took it for a platform
+  difference. It was the SDK version there too. (`#45`)
+
+  🔴 Deliberately **not** fixed with `importlib.metadata.version()`: an editable install
+  has `0.1.0` frozen in its dist-info while the source says otherwise, so that route swaps
+  one wrong number for another and looks fixed. Seven tests check the value a client
+  actually receives (`create_initialization_options()`), not the attribute we set — and
+  one of them is a positive control that fails if a bare FastMCP server ever stops
+  exhibiting the original fault, so this patch cannot outlive its reason in silence.
+
+### Changed
+- Pins moved to `measure-mirror v0.41.0` and `provenance-mirror v0.3.0`. Both releases
+  change ledger behaviour this server sits on top of: measure-mirror no longer creates a
+  missing ledger without `--new-ledger` (CLI only — `mm_preregister` is unaffected), and
+  both mirrors now read the chain head from the end of the file instead of parsing it whole.
+
+### Note on this entry
+Eight commits sat on `main` above the `v0.2.11` tag with nothing written here — `#37`,
+`#38`, `#42`, `#44` (dependency pin bumps) and `#39`, `#40`, `#41` (catalog count
+references following measure-mirror merges). They are mechanical follow-ups rather than
+behaviour changes, and are recorded as a group here rather than omitted.
+
+---
+
 ## [0.2.11] — 2026-08-19
 
 ### Fixed
