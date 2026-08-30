@@ -241,7 +241,7 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
     if not existed:
         # WARN level on purpose: compaction keeps WARN verbatim, and this is the one
         # line that a green-everywhere response would otherwise never carry.
-        findings.append(mm.Finding("㉘ ledger-birth", "WARN", _birth_msg(ledger_path)))
+        findings.append(mm.Finding("㉙ ledger-birth", "WARN", _birth_msg(ledger_path)))
     lint = _compact(_findings(findings))
     return _remind("mm_preregister", {**entry, "lint": lint,
                                       **_birth(ledger_path, existed)})

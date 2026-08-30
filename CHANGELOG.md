@@ -52,7 +52,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Blocking the API is not the answer: it would stop every lane mid-seal for a mistake most
   callers are not making. So this does not block. `mm_preregister`, `mm_retract`,
   `am_record`, `am_witness` and `pm_verify` add a `⚠️ new_ledger_created` field naming the
-  **absolute** path, and `mm_preregister` also raises a `㉘ ledger-birth` WARN inside `lint`
+  **absolute** path, and `mm_preregister` also raises a `㉙ ledger-birth` WARN inside `lint`
   (WARN survives output compaction; everything else is collapsed to a count).
 
   This is the gap nothing else in the stack can close: the chain of a brand-new ledger is
