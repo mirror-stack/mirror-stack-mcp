@@ -181,6 +181,34 @@ def _remind(tool, result):
     return f"{result}\n\n{msg}"
 
 
+# ── a ledger that did not exist is being born, not appended to ───────────────
+# measure-mirror 0.41.0 taught the CLI to refuse creating a ledger without
+# `--new-ledger`. The Python API did not change, and every tool here goes through
+# the API — so the whole gate misses this server. Two lanes were reported on
+# 2026-08-26 sealing into ledgers nobody audits, both via this path.
+#
+# Blocking the API would stop every lane mid-seal for a mistake most callers are
+# not making, so this does not block. It makes the birth VISIBLE in the response
+# the caller already reads — which is the part that was missing: the chain is
+# intact either way, so every integrity check stays green and nothing else in the
+# stack will ever mention that this file is new.
+_BIRTH_KEY = "⚠️ new_ledger_created"
+
+
+def _birth_msg(path: str) -> str:
+    return (f"{os.path.abspath(path)} did not exist — this call CREATED it rather than "
+            "appending to an existing ledger. If you meant an existing ledger, what you "
+            "just sealed is in a file no audit covers, and its chain will verify green "
+            "forever. Check the path (and which directory you are in), then re-seal in "
+            "the right ledger — append-only means this entry stays where it is.")
+
+
+def _birth(path: str, existed: bool) -> dict:
+    """The response field that distinguishes 'appended' from 'created'. Empty when
+    the ledger already existed, so a normal call carries no extra noise."""
+    return {} if existed else {_BIRTH_KEY: _birth_msg(path)}
+
+
 # ───────────────────────── 🪞 measure-mirror (claims) ─────────────────────────
 @mcp.tool()
 def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 200,
@@ -203,13 +231,20 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
 
     The response carries an automatic seal-quality lint (`lint` key): a FAIL there means
     the compute gate will BLOCK this claim — fix and re-seal under a NEW claim_id."""
+    existed = os.path.exists(ledger_path)
     entry = mm.preregister(
         ledger_path, claim_id, metric=metric, min_n=min_n, baseline=baseline,
         pass_threshold=pass_threshold, kill_condition=kill_condition,
         kill_threshold=kill_threshold, depends_on=depends_on,
         metric_range=metric_range, chance=chance, pre_seal_checks=pre_seal_checks)
-    lint = _compact(_findings(mm._preseal_lint(entry)))
-    return _remind("mm_preregister", {**entry, "lint": lint})
+    findings = list(mm._preseal_lint(entry))
+    if not existed:
+        # WARN level on purpose: compaction keeps WARN verbatim, and this is the one
+        # line that a green-everywhere response would otherwise never carry.
+        findings.append(mm.Finding("㉙ ledger-birth", "WARN", _birth_msg(ledger_path)))
+    lint = _compact(_findings(findings))
+    return _remind("mm_preregister", {**entry, "lint": lint,
+                                      **_birth(ledger_path, existed)})
 
 
 @mcp.tool()
@@ -291,7 +326,9 @@ def mm_multiseed_check(seed_results: list[float], baseline: float = 0.5) -> str:
 @mcp.tool()
 def mm_retract(ledger_path: str, claim_id: str, reason: str) -> dict:
     """Append a chain-linked retraction (cannot be silently deleted; dependents go STALE)."""
-    return _remind("mm_retract", mm.retract(ledger_path, claim_id, reason))
+    existed = os.path.exists(ledger_path)
+    return _remind("mm_retract", {**mm.retract(ledger_path, claim_id, reason),
+                                  **_birth(ledger_path, existed)})
 
 
 @mcp.tool()
@@ -352,14 +389,19 @@ def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
 def am_record(ledger_path: str, agent: str, action: str, target: str | None = None,
               payload: dict | None = None) -> dict:
     """Seal one agent action. Set target=<claim_id> to tie the action to a claim (J1)."""
+    existed = os.path.exists(ledger_path)
     return _remind("am_record",
-                   am.record(ledger_path, agent=agent, action=action, target=target, payload=payload))
+                   {**am.record(ledger_path, agent=agent, action=action,
+                                target=target, payload=payload),
+                    **_birth(ledger_path, existed)})
 
 
 @mcp.tool()
 def am_witness(my_ledger: str, peer_ledger: str, peer_name: str) -> dict:
     """Pin a peer ledger's head into mine (J3). Catches whole-ledger replacement that chains miss."""
-    return am.witness_peer(my_ledger, peer_ledger, peer_name=peer_name)
+    existed = os.path.exists(my_ledger)
+    return {**am.witness_peer(my_ledger, peer_ledger, peer_name=peer_name),
+            **_birth(my_ledger, existed)}
 
 
 @mcp.tool()
@@ -373,7 +415,9 @@ def am_verify(ledger_path: str) -> list[str]:
 def pm_verify(file_path: str, ledger_path: str = "pm_ledger.jsonl",
               origin: str | None = None) -> dict:
     """Verify a content file's provenance/integrity across 5 signals (a verifier, not a detector)."""
-    return pm.verify(file_path, ledger_path=ledger_path, origin=origin)
+    existed = os.path.exists(ledger_path)
+    return {**pm.verify(file_path, ledger_path=ledger_path, origin=origin),
+            **_birth(ledger_path, existed)}
 
 
 # ───────────────────────── 🪞🔎🪪 stack-level ─────────────────────────────────
