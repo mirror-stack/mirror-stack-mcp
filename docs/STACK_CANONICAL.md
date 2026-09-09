@@ -50,5 +50,7 @@ measure_mirror.mm.linkage_check(path) -> (ok, message, entries)   ← CANONICAL
   measure-mirror's own SHA-256 seal. Not duplicated — a different, mm-specific
   check used by `verify_self`'s L1 seal step.
 
-Because `linkage_check` is the single source, the two verifiers cannot diverge;
-a conformance/regression test on each side asserts they agree.
+Because `linkage_check` is the single source, its two adapters cannot diverge;
+a conformance/regression test on each side asserts they agree. This equivalence
+does not mean the outsider CLI still performs linkage-only verification: since
+0.2.14 its entry point uses `integrity.read_verified()` and recomputes hashes too.

@@ -38,6 +38,12 @@ Windsurf, any MCP client.
 
 ### Verification depth and gate migration (0.2.14)
 
+Release pins: measure-mirror **v0.41.2**, action-mirror **v0.4.0**, and
+provenance-mirror **v0.3.1**. Exact tag commits are recorded in
+[`pyproject.toml`](pyproject.toml) and checked by CI. Updating the checkout alone
+does not refresh an already installed dependency or a running MCP process.
+Reinstall the package and reconnect the client after an upgrade; do not rewrite ledgers.
+
 `mirror-stack-verify` now recomputes both content hashes and chain links; pointer-only
 fixtures do not certify integrity. Legacy 16-hex seals are accepted with a warning.
 `stack_verify_all` labels checks `HASH_RECOMPUTED`, `LOCAL_SNAPSHOT`, or `HEAD_WITNESS`.
@@ -79,8 +85,8 @@ reporting a resolved result, including a failure; it does not certify scientific
 | `am_record` | 🪪 actions | seal an action; `target=<claim_id>` ties it to a claim |
 | `am_witness` | 🪪 | pin a peer's ledger head (catches whole-file replacement) |
 | `am_verify` | 🪪 | verify an action ledger's hash chain |
-| `pm_verify` | 🔎 provenance | verify a file's provenance across 5 signals |
-| `stack_verify_all` | 🪞🔎🪪 | whole stack in one call: chain (L1) + anchors (L3) + witness (L2) |
+| `pm_verify` | 🔎 provenance | inspect 5 provenance/integrity signals; marker-only results are PROVENANCE-UNVERIFIED, never signature verification |
+| `stack_verify_all` | 🪞🔎🪪 | supplied ledgers only: hash integrity (L1), optional local snapshots (L3) and pinned-head witness comparisons (L2); scope is reported |
 
 (More granular `measure-mirror` probes are reachable via `mm_verify` — it dispatches by data key.)
 
