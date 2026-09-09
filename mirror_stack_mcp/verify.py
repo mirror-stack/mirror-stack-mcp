@@ -4,22 +4,22 @@ without trusting us, without an MCP client, without config.
 
   mirror-stack-verify LEDGER.jsonl [--ots PROOF.ots] [--explorer URL]
 
-Two independent confirmations, both reproducible by anyone:
+Verification scope:
 
-  1. chain   — recompute the prev_seal→seal linkage of the ledger. A break means an
-               entry was inserted, deleted, or reordered after sealing. (no network,
-               stdlib only — works on any mirror ledger.)
+  1. integrity — recompute both links AND content hashes from one ledger snapshot.
+                 No network; stdlib-only MIRROR-SPEC verification. Optional identity
+                 signatures are NOT verified; legacy 16-hex seals remain weaker.
   2. bitcoin — if an OpenTimestamps proof is given, cross-check its Bitcoin block
-               against a PUBLIC block explorer: the ledger head existed before that
-               block's time. This is the "don't trust us" part — the clock is
-               Bitcoin's and the lookup is a third party's, not ours. (needs the
-               `ots` CLI + network.)
+               against a PUBLIC block explorer. This CLI does NOT check binding
+               between that proof and this ledger, so ledger precedence remains
+               UNVERIFIED. (needs the `ots` CLI + network.)
 
-Honest scope: this proves INTEGRITY (not tampered) and PRECEDENCE (not backdated).
+Honest scope: this checks hash INTEGRITY, not external-clock PRECEDENCE.
 It does NOT prove the content is true, nor that an independent judge witnessed it.
 """
 import argparse
 import sys
+from .integrity import read_verified
 
 OK, FAIL, WARN = "✅", "❌", "⚠️"
 
@@ -57,8 +57,12 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     print("=== 🪞🔎🪪 mirror-stack-verify (you recompute — you don't trust us) ===")
-    ok_chain, msg = check_chain(a.ledger)
-    print(f"{OK if ok_chain else FAIL} [chain]   {msg}")
+    entries, error = read_verified(a.ledger)
+    ok_chain = error is None
+    msg = error or f"{len(entries)} entries: linkage and SHA-256 seals recomputed"
+    print(f"{OK if ok_chain else FAIL} [HASH_RECOMPUTED] {msg}")
+    if entries and any(len(e["seal"]) == 16 for e in entries):
+        print(f"{WARN} legacy 16-hex seals: weaker collision resistance")
 
     ok_btc = True
     if a.ots:
@@ -76,10 +80,10 @@ def main(argv=None):
         print(f"{WARN} [bitcoin] skipped — pass --ots PROOF.ots for the external-clock check")
 
     good = ok_chain and ok_btc
-    print(f"=== verdict: {'CONFIRMED' if good else 'NOT CONFIRMED'} "
-          f"(integrity{' + precedence' if a.ots and ok_btc else ''}) ===")
-    print("scope: proves not-tampered" + (" + not-backdated" if a.ots else "") +
-          "; NOT content truth, NOT an independent judging witness.")
+    print(f"=== verdict: {'CONFIRMED' if good else 'NOT CONFIRMED'} (hash integrity) ===")
+    print("scope: hash integrity only; NOT author identity, content truth or independent reproduction.")
+    print("external time: ledger precedence UNVERIFIED — "
+          "a supplied Bitcoin proof is checked separately; ledger-to-proof binding is not checked here.")
     return 0 if good else 1
 
 

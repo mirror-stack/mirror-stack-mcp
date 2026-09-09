@@ -1,5 +1,11 @@
 # Mirror Stack — canonical surfaces & the one shared primitive
 
+Since 0.2.14, `check_chain()` remains the linkage-only compatibility API, but the
+outsider CLI and gate use `integrity.read_verified()` for a single snapshot with
+both links and MIRROR-SPEC content hashes verified. Signature identity, external
+time and content truth remain outside this check. The directory orchestrator
+explicitly labels its automatically included ledgers as linkage-only.
+
 Two repos make up the running stack. They are **different surfaces, not
 duplicates** — keep them separate. This is the canonical map of who owns what,
 so "which one is authoritative?" has a written answer.

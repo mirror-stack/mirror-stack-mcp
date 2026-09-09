@@ -46,10 +46,10 @@ def test_chain_empty(tmp_path):
     assert not ok
 
 
-def test_main_intact_no_ots_confirms(tmp_path):
+def test_main_linkage_only_does_not_confirm_integrity(tmp_path):
     p = tmp_path / "l.jsonl"
     _w(p, CHAIN)
-    assert verify.main([str(p)]) == 0     # chain ok, bitcoin skipped → integrity confirmed
+    assert verify.main([str(p)]) == 1     # pointers alone are not hash integrity
 
 
 def test_main_broken_chain_fails(tmp_path):

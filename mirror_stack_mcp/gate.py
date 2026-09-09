@@ -12,17 +12,16 @@ discipline into a real workflow that the MCP can't reach:
 
   publish (resolution-before-publish), e.g. a git pre-commit hook:
       mirror-stack-gate publish --ledger L.jsonl --claim my_claim --am-ledger A.jsonl
-      # exits 1 unless a retraction or an am_record(target=my_claim) is sealed
+      # requires a reasoned retraction or action=result bound by payload.prereg_seal
 
 The same `decide()` backs server.mm_preflight, so the agent-facing tool and the
 shell enforcer can never drift apart.
 """
-import json
-import os
 import sys
+from .integrity import read_verified
 
 
-def scan_claim(ledger_path, claim_id):
+def scan_claim(ledger_path, claim_id, entries=None):
     """Return (prereg_entry_or_None, retracted_bool, leaked_entry_or_None) for claim_id.
 
     leaked_entry is a preregistration that carries NO kill fields but whose `metric`
@@ -31,38 +30,46 @@ def scan_claim(ledger_path, claim_id):
     the gate report the real reason instead of a misleading 'no preregistration'.
     """
     prereg, retracted, leaked = None, False, None
-    if os.path.exists(ledger_path):
-        with open(ledger_path, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    e = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if e.get("claim_id") != claim_id:
-                    continue
-                if e.get("_type") == "retraction":
-                    retracted = True
-                elif e.get("_type") is None and ("kill_threshold" in e or "kill_condition" in e) \
-                        and e.get("metric") != "protocol_amendment":
-                    prereg = e
-                elif e.get("_type") is None and e.get("metric") not in (None, "protocol_amendment"):
-                    from measure_mirror import mm
-                    if leaked is None and mm._looks_like_kill_prose(e.get("metric", "")):
-                        leaked = e
+    seen_registration = False
+    if entries is None:
+        entries, error = read_verified(ledger_path)
+        if error:
+            return None, False, None
+    for e in entries:
+        if e.get("claim_id") != claim_id:
+            continue
+        if e.get("_type") == "retraction":
+            retracted = bool(prereg and isinstance(e.get("reason"), str)
+                             and e["reason"].strip()) or retracted
+        elif e.get("_type") is None and e.get("metric") != "protocol_amendment":
+            if seen_registration:
+                continue
+            seen_registration = True
+            if "kill_threshold" in e or "kill_condition" in e:
+                prereg = e  # First-write wins, even when the first registration is invalid.
+            else:
+                from measure_mirror import mm
+                if isinstance(e.get("metric"), str) and mm._looks_like_kill_prose(e["metric"]):
+                    leaked = e
     return prereg, retracted, leaked
 
 
 def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=None):
     """Pure GO/BLOCK decision. Returns {decision, gate, claim_id, reasons, checks}."""
-    prereg, retracted, leaked = scan_claim(ledger_path, claim_id)
+    entries, error = read_verified(ledger_path)
+    prereg, retracted, leaked = scan_claim(ledger_path, claim_id, entries)
     checks: list[str] = []
 
     def out(decision, reasons):
         return {"decision": decision, "gate": gate, "claim_id": claim_id,
-                "reasons": reasons, "checks": checks}
+                "reasons": reasons, "checks": checks,
+                "verification": {"depth": "HASH_RECOMPUTED" if not error else "UNVERIFIED",
+                                 "content_truth": "unverified", "external_time": "unverified",
+                                 "independent_reproduction": "unverified"}}
+
+    if error:
+        return out("BLOCK", ["claims ledger integrity failed: " + error])
+    checks.append("claims ledger: linkage and all content hashes verified")
 
     if prereg is None:
         if leaked is not None:
@@ -77,6 +84,8 @@ def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=N
     checks.append("preregistration: sealed" + ("" if has_kill else " (NO kill-condition)"))
 
     if gate == "compute":
+        if retracted:
+            return out("BLOCK", ["claim is retracted; use a new preregistration"])
         if not has_kill:
             return out("BLOCK", ["preregistration has no kill-condition (unfalsifiable) — "
                                  "add one before spending compute"])
@@ -84,7 +93,10 @@ def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=N
         # automated checks can't do their job — compute would be spent against a
         # meaningless bar. WARN/INFO inform but don't block.
         from measure_mirror import mm
-        lint = mm._preseal_lint(prereg)
+        try:
+            lint = mm._preseal_lint(prereg)
+        except (TypeError, ValueError, AttributeError, KeyError) as exc:
+            return out("BLOCK", [f"preregistration cannot be evaluated: {exc}"])
         fails = [f for f in lint if f.level == "FAIL"]
         warns = [f for f in lint if f.level == "WARN"]
         if warns:
@@ -98,25 +110,34 @@ def decide(ledger_path, claim_id, gate="compute", am_ledger=None, reported_acc=N
         resolved = retracted
         if retracted:
             checks.append("resolution: retraction sealed")
-        if not resolved and am_ledger and os.path.exists(am_ledger):
-            with open(am_ledger, encoding="utf-8") as fh:
-                for line in fh:
-                    try:
-                        a = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if a.get("_type") == "action" and a.get("target") == claim_id:
-                        resolved = True
-                        checks.append("resolution: am_record(target) sealed")
-                        break
+        if not resolved and am_ledger:
+            actions, action_error = read_verified(am_ledger)
+            if action_error:
+                return out("BLOCK", ["action ledger integrity failed: " + action_error])
+            checks.append("action ledger: linkage and all content hashes verified")
+            for a in actions:
+                payload = a.get("payload")
+                if (a.get("_type") == "action" and a.get("target") == claim_id
+                        and a.get("action") == "result" and isinstance(payload, dict)
+                        and payload.get("status") in ("pass", "fail", "inconclusive")
+                        and isinstance(payload.get("summary"), str) and payload["summary"].strip()
+                        and payload.get("prereg_seal") == prereg["seal"]):
+                    resolved = True
+                    checks.append("resolution: explicit result bound to verified preregistration")
+                    break
         if not resolved:
             return out("BLOCK", ["no sealed resolution — seal the result "
-                                 "(am_record target=claim_id, or mm_retract) before publishing. "
+                                 "(am_record action=result, target=claim_id, payload with status, "
+                                 "summary, prereg_seal; or mm_retract with reason) before publishing. "
                                  "Prose doesn't count."])
         if reported_acc is not None:
             from measure_mirror import mm
-            checks.append(str(mm.falsifiability_check(ledger_path, claim_id, reported_acc=reported_acc)))
-        return out("GO", ["sealed preregistration + sealed resolution"])
+            # Evaluate the already-verified snapshot, not a second mutable file read.
+            finding = mm._falsifiability_eval(prereg, reported_acc)
+            checks.append(str(finding))
+            checks.append("publication may report a negative result; GO is NOT claim success")
+        return out("GO", ["verified preregistration + explicit sealed resolution; "
+                          "publication permitted, content truth not certified"])
 
     return out("BLOCK", [f"unknown gate '{gate}' — use 'compute' or 'publish'"])
 

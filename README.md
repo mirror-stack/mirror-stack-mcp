@@ -36,6 +36,30 @@ Windsurf, any MCP client.
 
 ## Tools (19)
 
+### Verification depth and gate migration (0.2.14)
+
+`mirror-stack-verify` now recomputes both content hashes and chain links; pointer-only
+fixtures do not certify integrity. Legacy 16-hex seals are accepted with a warning.
+`stack_verify_all` labels checks `HASH_RECOMPUTED`, `LOCAL_SNAPSHOT`, or `HEAD_WITNESS`.
+None certifies content truth, author identity, independent reproduction or external time.
+The outsider CLI checks an optional OTS proof separately; ledger-to-proof binding is
+not checked, so it does not claim this ledger's external-clock precedence.
+
+The compute/publish gate verifies ledger integrity before reading the decision facts.
+Publish requires a reasoned retraction, or an explicit result bound to the original seal:
+
+```python
+am_record(ledger_path="actions.jsonl", agent="researcher", action="result", target="claim-id",
+          payload={"status": "fail", "summary": "Measured value did not meet the preregistered bar",
+                   "prereg_seal": "<seal returned by the first mm_preregister>"})
+```
+
+Allowed statuses are `pass`, `fail`, and `inconclusive`. A started action does not
+resolve a claim. Append a new result instead of rewriting historical records. GO permits
+reporting a resolved result, including a failure; it does not certify scientific success.
+
+### Tool reference
+
 | Tool | Mirror | Does |
 |---|---|---|
 | `mm_preregister` | 🪞 claims | seal a claim + kill-condition **before** measuring (response carries an auto seal-quality lint) |
@@ -160,7 +184,7 @@ into the action site:
   kill-condition* is sealed. Wire it into your training/experiment launcher so it refuses to
   spend compute on an unsealed claim.
 - `mm_preflight(ledger, claim_id, gate="publish", am_ledger=…)` → **BLOCK** unless the *result*
-  is also sealed (a retraction, or `am_record(target=claim_id)`). Wire it into a pre-commit /
+  is also sealed (a reasoned retraction, or the explicit bound result above). Wire it into a pre-commit /
   pre-publish hook so unresolved claims can't ship.
 
 The MCP only *judges* GO/BLOCK — **your** launcher/hook does the actual blocking. The server
@@ -174,7 +198,7 @@ the part that actually exits non-zero, so a shell can do the blocking the MCP ca
 mirror-stack-gate compute --ledger L.jsonl --claim my_claim && python run.py
 # exits 1 (run.py never starts) unless a kill-conditioned preregistration is sealed
 mirror-stack-gate publish --ledger L.jsonl --claim my_claim --am-ledger A.jsonl
-# exits 1 unless the result is sealed too (a retraction or am_record(target=claim))
+# exits 1 unless a reasoned retraction or an explicit bound result is sealed too
 ```
 
 For git, drop in [`hooks/pre-commit.sample`](hooks/pre-commit.sample): it runs the publish gate

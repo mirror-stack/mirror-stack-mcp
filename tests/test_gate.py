@@ -5,6 +5,7 @@ enforcement the MCP can't provide. Also pins that server.mm_preflight delegates 
 the same decide(), so the agent tool and the shell enforcer can't drift.
 """
 import json
+import hashlib
 
 from mirror_stack_mcp import gate
 
@@ -12,7 +13,14 @@ PRE_KILL = {"claim_id": "c1", "metric": "acc", "kill_threshold": {"below": 0.5}}
 
 
 def _w(p, entries):
-    p.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    sealed, prev = [], "genesis"
+    for entry in entries:
+        e = {**entry, "prev_seal": prev}
+        e["seal"] = hashlib.sha256(json.dumps(e, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        sealed.append(e)
+        prev = e["seal"]
+    p.write_text("\n".join(json.dumps(e) for e in sealed) + "\n", encoding="utf-8")
+    return sealed
 
 
 # ── decide(): compute gate ────────────────────────────────────────────────────
@@ -43,14 +51,16 @@ def test_publish_blocks_unresolved(tmp_path):
 
 def test_publish_go_with_retraction(tmp_path):
     led = tmp_path / "l.jsonl"
-    _w(led, [PRE_KILL, {"_type": "retraction", "claim_id": "c1"}])
+    _w(led, [PRE_KILL, {"_type": "retraction", "claim_id": "c1", "reason": "negative result"}])
     assert gate.decide(str(led), "c1", "publish")["decision"] == "GO"
 
 
 def test_publish_go_with_am_record(tmp_path):
     led, am = tmp_path / "l.jsonl", tmp_path / "a.jsonl"
-    _w(led, [PRE_KILL])
-    _w(am, [{"_type": "action", "target": "c1"}])
+    pre = _w(led, [PRE_KILL])[0]
+    _w(am, [{"_type": "action", "target": "c1", "action": "result",
+             "payload": {"status": "fail", "summary": "threshold not met",
+                         "prereg_seal": pre["seal"]}}])
     assert gate.decide(str(led), "c1", "publish", am_ledger=str(am))["decision"] == "GO"
 
 
