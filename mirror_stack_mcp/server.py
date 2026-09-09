@@ -137,7 +137,8 @@ _VERIFY = ('🪞 Before you state a number: (1) "mm flagged" only for a Finding 
 
 REMINDERS = {
     "mm_preregister": "🪞 Sealed. Not done until the RESULT is sealed too — "
-        "am_record(target=claim_id) on a verdict, or mm_retract if falsified. Prose doesn't "
+        "am_record(action=result, target=claim_id, payload={status, summary, prereg_seal}) "
+        "on a verdict, or mm_retract if falsified. Prose doesn't "
         "count. Your kill_condition is the stop-loss; if big compute follows, seal first, then run.",
     "mm_verify": _VERIFY,
     "mm_audit": _VERIFY,
@@ -373,7 +374,11 @@ def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
     gate="compute": GO only if a sealed preregistration WITH a kill-condition exists for
                     claim_id (enforces seal-before-compute).
     gate="publish": additionally GO only if a RESOLUTION is sealed — a retraction in
-                    ledger_path, or an am_record(target=claim_id) in am_ledger.
+                    ledger_path (with reason), or am_record(action=result, target=claim_id)
+                    with payload status=pass/fail/inconclusive, nonempty summary,
+                    and prereg_seal matching the first verified registration.
+    Both ledgers must pass hash and linkage verification. GO authorizes publication
+    of a resolved result, including failures; it does NOT certify claim success.
     This is a PRIMITIVE: the MCP returns GO/BLOCK; YOUR script must do the actual blocking
     (the MCP cannot intercept external compute or commits — that is by design). The shell
     enforcer that DOES exit non-zero is `mirror-stack-gate` (mirror_stack_mcp.gate); both
@@ -442,15 +447,15 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
     def add(level, layer, name, msg):
         nonlocal ok
         ok = ok and level
-        out.append({"ok": level, "layer": layer, "name": name, "msg": msg})
+        depth = {"L1 chain": "HASH_RECOMPUTED", "L3 anchor": "LOCAL_SNAPSHOT",
+                 "L2 witness": "HEAD_WITNESS"}[layer]
+        out.append({"ok": level, "layer": layer, "name": name, "msg": msg,
+                    "depth": depth})
 
-    findings = mm.verify_chain(mm_ledger)
-    bad = [str(f) for f in findings if getattr(f, "level", "OK") not in ("OK", "INFO")]
-    # Say how many seals were checked. "seals valid" is also true of an empty ledger.
-    n_entries = sum(1 for l in Path(mm_ledger).read_text(encoding="utf-8",
-                                                         errors="replace").splitlines() if l.strip())
-    add(not bad, "L1 chain", Path(mm_ledger).name,
-        f"seals valid ({n_entries} entries checked)" if not bad else str(bad))
+    from .integrity import read_verified
+    entries, error = read_verified(mm_ledger)
+    add(error is None, "L1 chain", Path(mm_ledger).name,
+        error or f"seals valid ({len(entries)} entries checked)")
 
     if anchor_dir:
         for af in sorted(Path(anchor_dir).glob("anchor_*.json")):
@@ -486,7 +491,11 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
               "scope": {"mm_ledger": Path(mm_ledger).name,
                         "layers_run": sorted({c["layer"] for c in out}),
                         "layers_not_requested": [] if anchor_dir else ["L3 anchor"],
-                        "layers_skipped": skipped}}
+                        "layers_skipped": skipped,
+                        "external_time": "unverified",
+                        "author_identity": "unverified",
+                        "independent_reproduction": "unverified",
+                        "content_truth": "unverified"}}
     if skipped:
         # `skipped` means REQUESTED-but-did-not-run, which is the defect this fixes.
         # Not passing `anchor_dir` at all is not that — you did not ask for L3, so it is

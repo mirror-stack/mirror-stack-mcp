@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.14] — 2026-09-09
+
+- Gate and outsider CLI recompute MIRROR-SPEC content hashes and links from a
+  single snapshot. Missing, empty, malformed, duplicate-key and tampered ledgers fail closed.
+- Publish requires a reasoned retraction or explicit `action=result` with
+  `payload.status`, `payload.summary`, and `payload.prereg_seal` binding the first registration.
+  Merely starting work no longer resolves a claim. Negative results remain publishable.
+- Expose verification depth and unverified content truth, author identity,
+  external time and independent reproduction. A separately checked OTS proof is not
+  presented as proof of this ledger's precedence without checking its binding.
+- Migration: append a real explicit result; do not rewrite historical sealed actions.
+
 All notable changes to mirror-stack-mcp are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 

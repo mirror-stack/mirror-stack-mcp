@@ -37,7 +37,15 @@ def _registered():
 
 
 def _write(path, entries):
-    path.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+    import hashlib
+    sealed, prev = [], "genesis"
+    for entry in entries:
+        e = {**entry, "prev_seal": prev}
+        e["seal"] = hashlib.sha256(json.dumps(e, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        sealed.append(e)
+        prev = e["seal"]
+    path.write_text("\n".join(json.dumps(e) for e in sealed) + "\n", encoding="utf-8")
+    return sealed
 
 
 # ── registration / defaults ───────────────────────────────────────────────────
@@ -141,15 +149,17 @@ def test_preflight_publish_go_with_retraction(tmp_path):
     led = tmp_path / "mm.jsonl"
     _write(led, [
         {"claim_id": "c1", "metric": "acc", "kill_threshold": {"below": 0.5}},
-        {"_type": "retraction", "claim_id": "c1"},
+        {"_type": "retraction", "claim_id": "c1", "reason": "negative result"},
     ])
     assert s.mm_preflight(str(led), "c1", gate="publish")["decision"] == "GO"
 
 
 def test_preflight_publish_go_with_am_record(tmp_path):
     led, am = tmp_path / "mm.jsonl", tmp_path / "am.jsonl"
-    _write(led, [{"claim_id": "c1", "metric": "acc", "kill_threshold": {"below": 0.5}}])
-    _write(am, [{"_type": "action", "target": "c1"}])
+    pre = _write(led, [{"claim_id": "c1", "metric": "acc", "kill_threshold": {"below": 0.5}}])[0]
+    _write(am, [{"_type": "action", "target": "c1", "action": "result",
+                "payload": {"status": "fail", "summary": "threshold not met",
+                            "prereg_seal": pre["seal"]}}])
     r = s.mm_preflight(str(led), "c1", gate="publish", am_ledger=str(am))
     assert r["decision"] == "GO"
 
