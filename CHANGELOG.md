@@ -2,6 +2,11 @@
 
 ## [0.2.14] — 2026-09-09
 
+- Pin measure-mirror v0.41.2 and provenance-mirror v0.3.1 to their exact tagged
+  commits; test the corrected provenance contract through the MCP wrapper.
+- Align README/tool tables and canonical/anchoring guides with the actual verification
+  paths, release pins and installation/reconnect boundary.
+
 - Gate and outsider CLI recompute MIRROR-SPEC content hashes and links from a
   single snapshot. Missing, empty, malformed, duplicate-key and tampered ledgers fail closed.
 - Publish requires a reasoned retraction or explicit `action=result` with

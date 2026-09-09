@@ -107,8 +107,13 @@ ots upgrade manifest.json.ots
 ots info manifest.json.ots        # shows BitcoinBlockHeaderAttestation(<height>) + merkle root
 ```
 
-A self-contained re-runnable script (`ots_anchor.sh`) lives alongside the standard ledgers in the
-[Mirror Stack conventions](https://github.com/mirror-stack/measure-mirror/tree/main/stack).
+The packaged implementation is
+[`mirror_stack_mcp/ots_anchor.py`](../mirror_stack_mcp/ots_anchor.py).
+Machine-local cron scripts are deployment-specific and are not shipped in the conventions directory.
+
+The outsider `mirror-stack-verify` CLI recomputes ledger hashes but checks a supplied
+OTS proof separately. It does not currently verify ledger-to-proof binding, so its
+output correctly leaves this ledger's external-clock precedence unverified.
 
 ## Notes
 
