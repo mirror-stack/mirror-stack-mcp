@@ -21,6 +21,21 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+  portability:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[test]"
+      - name: Native workspace permissions, locks, CLI and stdio contracts
+        run: pytest -v tests/test_runtime_contract.py tests/test_stdio_runtime.py tests/test_product.py
+
   package:
     # Build the wheel and exercise it in a CLEAN env — catches "works in the repo,
     # broken once installed" (missing modules / entry point / a stale-or-renamed
@@ -41,3 +56,5 @@ jobs:
         run: pip install dist/*.whl
       - name: Smoke-test the installed package (run from /tmp, not the repo)
         run: cd /tmp && python "$GITHUB_WORKSPACE/tests/smoke_installed.py"
+      - name: Installed product CLI and MCP outside the checkout
+        run: cd /tmp && PRODUCT_TEST_INSTALLED=1 python "$GITHUB_WORKSPACE/tests/test_product.py"

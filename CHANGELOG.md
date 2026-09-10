@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0] — 2026-09-10
+
+- Independent `mirror-stack` setup, record, verify, doctor, connect and serve commands.
+- Shared managed CLI/MCP permissions, OS-held workspace locks, durable delivery
+  receipts, explicit task preparation and restart-safe replay.
+- Exact-file optional read-ledger grants; no required Yeoul or LaneStack workspace.
+- Operator-only audited recovery retires interrupted IDs, including missing receipts;
+  no rollback, automatic success marking, or worker-facing unlock.
+- Fail-closed ledger/path checks and collision-resistant OTS manifests. Existing
+  trusted-local entrypoints remain available, explicitly outside managed guarantees.
+- See [workspace guide](WORKSPACE_GUIDE.md) and [runtime contract](RUNTIME_CONTRACT.md)
+  for migration, supported entrypoints and OS/process limitations.
+
 ## [0.2.14] — 2026-09-09
 
 - Pin measure-mirror v0.41.2 and provenance-mirror v0.3.1 to their exact tagged

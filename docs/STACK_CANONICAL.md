@@ -23,7 +23,7 @@ so "which one is authoritative?" has a written answer.
 | Surface | Lives in | Owns |
 |---|---|---|
 | **measure-mirror `stack/`** | [`mirror-stack/measure-mirror`](https://github.com/mirror-stack/measure-mirror) `stack/` | the stack **conventions + honesty docs** (`MIRROR_STACK.md`, `DISCIPLINE.md`, `PILLARS.md`, the case study); **`verify_self.py`** (one claims ledger: L1 self-chain + L3 anchors, zero external tool); **`verify_all.py`** (the orchestrator — adds L2 cross-witness *between* ledgers via `am`); `tombstone.py` |
-| **mirror-stack-mcp** | this repo | the **agent MCP server** (`server.py`, 19 tools); the **`mirror-stack-gate`** enforcer CLI (`gate.py`); the **zero-config outsider** `mirror-stack-verify` CLI (`verify.py`); Bitcoin/OTS anchoring (`ots_anchor.py`) |
+| **mirror-stack-mcp** | this repo | the **agent MCP server** (`server.py`, 22 tools); independent managed **`mirror-stack`** product CLI (`product.py`); the **`mirror-stack-gate`** enforcer CLI (`gate.py`); the **zero-config outsider** `mirror-stack-verify` CLI (`verify.py`); Bitcoin/OTS anchoring (`ots_anchor.py`) |
 
 Rule of thumb: **measure-mirror `stack/` = the conventions and the self/orchestrated
 verification that ships with the library**; **mirror-stack-mcp = how an *agent* (MCP)
