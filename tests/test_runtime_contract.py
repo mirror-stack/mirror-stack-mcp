@@ -95,7 +95,8 @@ def test_invalid_existing_ledger_not_extended(managed, contents):
 def test_valid_unterminated_tail_refused(managed):
     record()
     path = managed / "actions.jsonl"
-    raw = path.read_bytes().rstrip(b"\n")
+    # Remove the entire native terminator, including Windows CRLF.
+    raw = path.read_bytes().rstrip(b"\r\n")
     path.write_bytes(raw)
     with pytest.raises(RuntimeRefusal, match="unterminated"):
         record("op-2")

@@ -441,6 +441,12 @@ class Workspace:
         return {"approved": str(baseline), "message": "Commands approved. OS isolation is still required where needed. Reconnect to apply."}
 
     def cli(self, argv=None):
+        # The CLI emits JSON containing Unicode tool output. Windows redirected
+        # streams otherwise default to a legacy code page and can fail AFTER a
+        # committed operation. Fix the transport, never replace verdict characters.
+        for stream in (sys.stdin, sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="strict")
         parser = argparse.ArgumentParser(prog=self.product, description="Standalone workspace setup, execution and diagnosis")
         parser.add_argument("--workspace", default=os.getcwd())
         sub = parser.add_subparsers(dest="command")

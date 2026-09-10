@@ -141,6 +141,8 @@ class ProductContract(unittest.TestCase):
                 from mirror_stack_mcp.runtime import scoped_path
                 self.assertEqual(scoped_path(ledger, external_read=True), str(ledger))
                 server.mm_anchor(str(ledger))
+                witness = server.am_witness("witnesses.jsonl", str(ledger), "peer", operation_id="witness")
+                self.assertTrue((self.root / "witnesses.jsonl").is_file(), witness)
                 with self.assertRaises(ValueError):
                     server.am_record(str(ledger), "u", "note", operation_id="external-write")
             else:
@@ -165,11 +167,12 @@ class ProductContract(unittest.TestCase):
         self.assertEqual(ledger.read_bytes(), original)
 
     def test_cli_outside_launch_directory(self):
-        env = dict(os.environ, PYTHONPATH=SOURCE, PYTHONDONTWRITEBYTECODE="1")
+        env = dict(os.environ, PYTHONPATH=SOURCE, PYTHONDONTWRITEBYTECODE="1",
+                   PYTHONIOENCODING="ascii")
         def cli(*args):
             return subprocess.run([sys.executable, "-B", "-m", PACKAGE + ".product", *args,
                                    "--workspace", str(self.root)], cwd=self.base, env=env,
-                                  text=True, capture_output=True, timeout=30)
+                                  text=True, encoding="utf-8", capture_output=True, timeout=30)
         self.assertEqual(cli("doctor").returncode, 0)
         result = cli("run", TOOL, "--arguments", json.dumps(ARGUMENTS), "--yes")
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
