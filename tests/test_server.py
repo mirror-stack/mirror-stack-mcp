@@ -1,7 +1,7 @@
 """Unit + smoke tests for the unified Mirror Stack MCP server.
 
 Covers what a fresh install / reconnect must get right:
-  • all 19 tools register (drift detector — adding/removing a tool fails this);
+  • all 22 tools register (19 business + 3 workspace tools);
   • the loop-safe defaults (compact output, once-per-session reminders);
   • signal-preserving compaction — OK/INFO collapse, but a WARN/FAIL is NEVER dropped
     (a hidden negative is the cardinal sin this server exists to prevent);
@@ -28,7 +28,7 @@ EXPECTED_TOOLS = {
     # 🔎 provenance-mirror
     "pm_verify",
     # 🪞🔎🪪 stack-level
-    "stack_verify_all",
+    "stack_verify_all", "workspace_prepare", "workspace_execute", "workspace_tasks",
 }
 
 
@@ -49,10 +49,10 @@ def _write(path, entries):
 
 
 # ── registration / defaults ───────────────────────────────────────────────────
-def test_all_19_tools_registered():
+def test_all_22_tools_registered():
     names = _registered()
     assert names == EXPECTED_TOOLS, f"tool drift: {names ^ EXPECTED_TOOLS}"
-    assert len(names) == 19
+    assert len(names) == 22
 
 
 def test_defaults_are_loop_safe():

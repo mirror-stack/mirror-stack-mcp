@@ -21,6 +21,7 @@ import os
 import re
 import subprocess
 import urllib.request
+import uuid
 from pathlib import Path
 
 OTS = os.environ.get("OTS_BIN", "ots")
@@ -56,13 +57,17 @@ def build_manifest(ledger_paths: list[str], out_dir: str) -> tuple[str, str]:
                      "bytes": Path(f).stat().st_size, "sha256": _sha256(f),
                      "head_seal": _head_seal(f)})
     stamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    man = os.path.join(out_dir, f"manifest_{stamp}.json")
+    # Different legitimate operations in the same second must not replace evidence.
+    man = os.path.join(out_dir, f"manifest_{stamp}_{uuid.uuid4().hex}.json")
     manifest = {"_type": "ots_anchor_manifest",
                 "ts": datetime.datetime.utcnow().isoformat() + "Z",
                 "purpose": "Bitcoin timestamp of mirror-stack ledger heads — "
                            "proves no-backdating, NOT content truth.",
                 "ledger_count": len(rows), "ledgers": rows}
-    Path(man).write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+    with open(man, "x", encoding="utf-8") as stream:
+        stream.write(json.dumps(manifest, ensure_ascii=False, indent=2))
+        stream.flush()
+        os.fsync(stream.fileno())
     return man, _sha256(man)
 
 

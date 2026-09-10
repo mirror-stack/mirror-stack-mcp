@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mirror-stack-mcp"
-version = "0.2.14"
+version = "0.3.0"
 description = "Unified MCP server for the Mirror Stack — claims, actions, provenance + verify-all in one server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,6 +35,7 @@ bitcoin = ["opentimestamps-client>=0.7"]
 test = ["pytest>=7"]
 
 [project.scripts]
+mirror-stack = "mirror_stack_mcp.product:main"
 mirror-stack-mcp = "mirror_stack_mcp.server:main"
 mirror-stack-verify = "mirror_stack_mcp.verify:main"
 mirror-stack-gate = "mirror_stack_mcp.gate:main"

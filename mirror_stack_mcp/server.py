@@ -24,6 +24,7 @@ from provmirror import pm
 
 from . import ots_anchor
 from . import __version__
+from .runtime import guarded, scoped_path, announce
 
 DISCIPLINE = """\
 🪞🔎🪪 MIRROR STACK — discipline for honest measurement (read on connect).
@@ -212,12 +213,14 @@ def _birth(path: str, existed: bool) -> dict:
 
 # ───────────────────────── 🪞 measure-mirror (claims) ─────────────────────────
 @mcp.tool()
+@guarded(paths=("ledger_path",), write=True, ledgers=("ledger_path",))
 def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 200,
                    baseline: float = 0.5, pass_threshold: float = 0.6,
                    kill_condition: str | None = None, kill_threshold: dict | None = None,
                    depends_on: list[str] | None = None,
                    metric_range: list | str | None = None, chance: float | None = None,
-                   pre_seal_checks: list[str | dict] | None = None) -> dict:
+                   pre_seal_checks: list[str | dict] | None = None,
+                   operation_id: str | None = None) -> dict:
     """Seal a claim BEFORE measuring (preregistration). kill_condition/threshold = what falsifies it.
 
     For a non-[0,1] metric, declare metric_range (e.g. [0,100] for a %, or "unbounded" for a
@@ -249,12 +252,14 @@ def mm_preregister(ledger_path: str, claim_id: str, metric: str, min_n: int = 20
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path",), read_paths=("ledger_path",))
 def mm_verify(ledger_path: str, data: dict, groups: list[str] | None = None) -> list[str]:
     """Umbrella verify: runs every probe whose input key is present in `data` (acc/n/seed_results/scores/...)."""
     return _remind("mm_verify", _compact(_findings(mm.verify(ledger_path, data, groups=groups))))
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path",), read_paths=("ledger_path",))
 def mm_audit(ledger_path: str, claim_id: str, reported_metric: str, reported_acc: float,
              n: int, baseline: float | None = None,
              metric_range: list | str | None = None, chance: float | None = None) -> list[str]:
@@ -269,6 +274,7 @@ def mm_audit(ledger_path: str, claim_id: str, reported_metric: str, reported_acc
 
 
 @mcp.tool()
+@guarded()
 def mm_power_check(n: int, baseline: float, min_detectable_effect: float = 0.05,
                    target_power: float = 0.8) -> str:
     """False-negative guard: is n big enough to detect the minimum effect? (design-time)."""
@@ -277,6 +283,7 @@ def mm_power_check(n: int, baseline: float, min_detectable_effect: float = 0.05,
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path", "am_ledger"), read_paths=("ledger_path", "am_ledger"))
 def mm_falsifiability_check(ledger_path: str, claim_id: str,
                             reported_acc: float | None = None,
                             am_ledger: str | None = None) -> str:
@@ -291,6 +298,7 @@ def mm_falsifiability_check(ledger_path: str, claim_id: str,
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path",), read_paths=("ledger_path",))
 def mm_prereg_lint(ledger_path: str, claim_id: str | None = None) -> list[str]:
     """🔍 Lint a sealed preregistration for QUALITY defects — the cheap machine-check to
     run right before spending compute.
@@ -313,19 +321,23 @@ def mm_prereg_lint(ledger_path: str, claim_id: str | None = None) -> list[str]:
 
 
 @mcp.tool()
+@guarded()
 def mm_leakage_check(train_items: list, test_items: list) -> str:
     """Detect train∩test contamination via hash intersection."""
     return str(mm.leakage_check(train_items, test_items))
 
 
 @mcp.tool()
+@guarded()
 def mm_multiseed_check(seed_results: list[float], baseline: float = 0.5) -> str:
     """Flag unstable signal / lucky seed across multiple runs."""
     return str(mm.multiseed_check(seed_results, baseline=baseline))
 
 
 @mcp.tool()
-def mm_retract(ledger_path: str, claim_id: str, reason: str) -> dict:
+@guarded(paths=("ledger_path",), write=True, ledgers=("ledger_path",))
+def mm_retract(ledger_path: str, claim_id: str, reason: str,
+               operation_id: str | None = None) -> dict:
     """Append a chain-linked retraction (cannot be silently deleted; dependents go STALE)."""
     existed = os.path.exists(ledger_path)
     return _remind("mm_retract", {**mm.retract(ledger_path, claim_id, reason),
@@ -333,13 +345,16 @@ def mm_retract(ledger_path: str, claim_id: str, reason: str) -> dict:
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path",), read_paths=("ledger_path",))
 def mm_anchor(ledger_path: str) -> dict:
     """Tamper-evident snapshot (entry_count, head_seal, file hash) to store OUTSIDE the ledger."""
     return mm.anchor(ledger_path)
 
 
 @mcp.tool()
-def mm_anchor_bitcoin(ledger_paths: list[str], out_dir: str) -> dict:
+@guarded(paths=("ledger_paths", "out_dir"), write=True, network=True, read_ledgers=("ledger_paths",))
+def mm_anchor_bitcoin(ledger_paths: list[str], out_dir: str,
+                      operation_id: str | None = None) -> dict:
     """Real external anchor (L3): timestamp ledger HEADS into Bitcoin via OpenTimestamps.
 
     Upgrades mm_anchor from a LOCAL snapshot to an EXTERNAL clock — proves the heads existed
@@ -351,14 +366,17 @@ def mm_anchor_bitcoin(ledger_paths: list[str], out_dir: str) -> dict:
 
 
 @mcp.tool()
-def mm_anchor_upgrade(ots_path: str) -> dict:
+@guarded(paths=("ots_path",), write=True, network=True)
+def mm_anchor_upgrade(ots_path: str, operation_id: str | None = None) -> dict:
     """Retrieve the Bitcoin block attestation for a pending .ots proof (run ~1-3h after stamping).
     Returns state='bitcoin_confirmed' with block_height once a calendar has committed to a block,
     else 'pending' (retry later)."""
+    scoped_path(ots_path + ".bak")
     return ots_anchor.upgrade(ots_path)
 
 
 @mcp.tool()
+@guarded(paths=("ots_path",), network=True)
 def mm_anchor_verify(ots_path: str, explorer: str = "https://blockstream.info/api") -> dict:
     """Verify a Bitcoin-anchored proof WITHOUT a local Bitcoin node, by cross-checking the block
     merkle root against a public explorer. Returns block height, block time, and whether the
@@ -367,6 +385,7 @@ def mm_anchor_verify(ots_path: str, explorer: str = "https://blockstream.info/ap
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path", "am_ledger"), read_paths=("ledger_path", "am_ledger"))
 def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
                  am_ledger: str | None = None, reported_acc: float | None = None) -> dict:
     """GO/BLOCK gate primitive — wire it into a compute launcher or a pre-publish/commit hook.
@@ -391,8 +410,9 @@ def mm_preflight(ledger_path: str, claim_id: str, gate: str = "compute",
 
 # ───────────────────────── 🪪 action-mirror (actions) ─────────────────────────
 @mcp.tool()
+@guarded(paths=("ledger_path",), write=True, ledgers=("ledger_path",))
 def am_record(ledger_path: str, agent: str, action: str, target: str | None = None,
-              payload: dict | None = None) -> dict:
+              payload: dict | None = None, operation_id: str | None = None) -> dict:
     """Seal one agent action. Set target=<claim_id> to tie the action to a claim (J1)."""
     existed = os.path.exists(ledger_path)
     return _remind("am_record",
@@ -402,7 +422,9 @@ def am_record(ledger_path: str, agent: str, action: str, target: str | None = No
 
 
 @mcp.tool()
-def am_witness(my_ledger: str, peer_ledger: str, peer_name: str) -> dict:
+@guarded(paths=("my_ledger", "peer_ledger"), write=True, ledgers=("my_ledger",), read_ledgers=("peer_ledger",))
+def am_witness(my_ledger: str, peer_ledger: str, peer_name: str,
+               operation_id: str | None = None) -> dict:
     """Pin a peer ledger's head into mine (J3). Catches whole-ledger replacement that chains miss."""
     existed = os.path.exists(my_ledger)
     return {**am.witness_peer(my_ledger, peer_ledger, peer_name=peer_name),
@@ -410,6 +432,7 @@ def am_witness(my_ledger: str, peer_ledger: str, peer_name: str) -> dict:
 
 
 @mcp.tool()
+@guarded(paths=("ledger_path",), read_paths=("ledger_path",))
 def am_verify(ledger_path: str) -> list[str]:
     """Verify an action ledger's hash chain (edits/deletions/insertions detected)."""
     return _compact(_findings(am.verify_chain(ledger_path)))
@@ -417,8 +440,9 @@ def am_verify(ledger_path: str) -> list[str]:
 
 # ───────────────────────── 🔎 provenance-mirror (artifacts) ────────────────────
 @mcp.tool()
+@guarded(paths=("file_path", "ledger_path"), write=True, ledgers=("ledger_path",))
 def pm_verify(file_path: str, ledger_path: str = "pm_ledger.jsonl",
-              origin: str | None = None) -> dict:
+              origin: str | None = None, operation_id: str | None = None) -> dict:
     """Verify a content file's provenance/integrity across 5 signals (a verifier, not a detector)."""
     existed = os.path.exists(ledger_path)
     return {**pm.verify(file_path, ledger_path=ledger_path, origin=origin),
@@ -427,6 +451,7 @@ def pm_verify(file_path: str, ledger_path: str = "pm_ledger.jsonl",
 
 # ───────────────────────── 🪞🔎🪪 stack-level ─────────────────────────────────
 @mcp.tool()
+@guarded(paths=("mm_ledger", "anchor_dir", "am_ledger"), read_paths=("mm_ledger", "am_ledger"))
 def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
                      am_ledger: str | None = None, am_peer_name: str | None = None) -> dict:
     """Verify the layers you point it at: mm chain (L1) + anchors (L3) + cross-witness (L2).
@@ -459,10 +484,11 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
 
     if anchor_dir:
         for af in sorted(Path(anchor_dir).glob("anchor_*.json")):
+            scoped_path(af)
             a = json.loads(af.read_text())
-            lp = Path(a["ledger_path"])
+            lp = Path(scoped_path(a["ledger_path"], external_read=True))
             if not lp.exists():
-                lp = af.parent / lp.name
+                lp = Path(scoped_path(af.parent / lp.name))
             cur = hashlib.sha256(lp.read_bytes()).hexdigest() if lp.exists() else ""
             if cur == a["anchor_hash"]:
                 add(True, "L3 anchor", af.name, "intact")
@@ -505,7 +531,31 @@ def stack_verify_all(mm_ledger: str, anchor_dir: str | None = None,
     return _remind("stack_verify_all", result)
 
 
+
+@mcp.tool()
+def workspace_prepare(tool: str, arguments: dict) -> dict:
+    """Prepare a durable task WITHOUT executing it. Retain task_id before execute.
+    Reuse the same task_id after a lost execute response; never create a new task
+    to bypass an interrupted operation. Product modes still restrict permissions."""
+    from .product import workspace, root
+    return workspace.prepare(root(), tool, arguments)
+
+
+@mcp.tool()
+def workspace_execute(task_id: str) -> dict:
+    """Execute one prepared task, or replay its recorded response. No recovery or elevation."""
+    from .product import workspace, root
+    return workspace.execute(root(), task_id)
+
+
+@mcp.tool()
+def workspace_tasks() -> dict:
+    """Inspect task receipts, without executing business work or clearing pending state."""
+    from .product import workspace, root
+    return workspace.tasks(root())
+
 def main():
+    announce()
     mcp.run()
 
 

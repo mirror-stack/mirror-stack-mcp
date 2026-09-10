@@ -12,6 +12,23 @@ the verdict (pass / kill / retracted / inconclusive), and every number auto-reco
 tamper with a sealed value in the browser and watch the hash break. Shows what the discipline looks like in practice,
 including the failures and retractions — not just the wins.
 
+## Standalone workspace (v0.3.0)
+
+Mirror is independent of Yeoul and LaneStack. Start with the
+[workspace guide / 간편 사용·복구 안내](WORKSPACE_GUIDE.md).
+
+```bash
+pip install git+https://github.com/mirror-stack/mirror-stack-mcp@v0.3.0
+mirror-stack setup ./my-records --mode record
+mirror-stack record "First note" --workspace ./my-records
+mirror-stack doctor --workspace ./my-records
+mirror-stack connect --workspace ./my-records
+```
+
+The product CLI and managed MCP share operation receipts and locks. Setup asks for
+confirmation; scripts can add `--yes` after review. Existing client settings are
+not changed. Raw core CLIs and arbitrary shell commands are outside this boundary.
+
 ## Get all mirrors at once
 
 ```bash
@@ -21,7 +38,11 @@ pip install git+https://github.com/mirror-stack/mirror-stack-mcp
 That single install pulls **measure-mirror + action-mirror + provenance-mirror** as
 dependencies — you don't clone four repos. (Apache-2.0, zero-dep cores.)
 
-## Add one MCP server
+## Legacy trusted-local MCP configuration
+
+For workspace-scoped permissions, serialized writes and restart-safe delivery
+receipts, see the [managed stdio runtime contract](RUNTIME_CONTRACT.md).
+The minimal configuration below is trusted-local compatibility mode, not managed mode.
 
 ```json
 {
@@ -34,7 +55,11 @@ dependencies — you don't clone four repos. (Apache-2.0, zero-dep cores.)
 No `cwd`, no `PYTHONPATH` — it's a proper installed entry point. Works in Claude Code, Cursor,
 Windsurf, any MCP client.
 
-## Tools (19)
+## Tools (22: 19 business tools + 3 workspace tools)
+
+`workspace_prepare`, `workspace_execute` and `workspace_tasks` manage durable task
+handles without caller-created operation IDs. They never approve permissions or
+clear interrupted operations. See the [workflow contract](WORKSPACE_GUIDE.md).
 
 ### Verification depth and gate migration (0.2.14)
 
