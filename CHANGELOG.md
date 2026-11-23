@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+- OTS anchoring: optional publishable manifest (format 2). `stamp()` / `build_manifest()`
+  accept `id_map_path`; the manifest then carries no paths and names each ledger only by a
+  salted id `sha256(salt || basename)`, with a per-ledger random salt kept in a private map
+  outside the output directory. Default output (format 1) is unchanged.
+- New `locate_ledger()` finds the manifest row pinning a (possibly later, appended) ledger
+  file in either format, and checks a disclosed name + salt against a format-2 id.
+
 ## [0.3.0] — 2026-09-10
 
 - Independent `mirror-stack` setup, record, verify, doctor, connect and serve commands.

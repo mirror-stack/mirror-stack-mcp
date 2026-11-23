@@ -48,14 +48,68 @@ def _head_seal(p) -> str | None:
     return head
 
 
-def build_manifest(ledger_paths: list[str], out_dir: str) -> tuple[str, str]:
-    """Write a manifest pinning each ledger's sha256 + head seal. Returns (path, sha256)."""
+REDACTED_SCHEME = "sha256(salt || utf8(ledger basename))"
+
+
+def ledger_id(name: str, salt_hex: str) -> str:
+    """Salted commitment to a ledger's file name, as written in a redacted manifest.
+
+    Disclosing (name, salt) for ONE ledger lets anyone recompute its id; the other
+    ledgers' names stay hidden because each ledger has its own random salt."""
+    return hashlib.sha256(bytes.fromhex(salt_hex) + name.encode("utf-8")).hexdigest()
+
+
+def _load_salts(id_map_path: str, names: list[str]) -> dict:
+    """Load the private name -> salt map, adding a fresh random salt for new ledgers.
+
+    Salts are stable across runs so the same ledger keeps the same id every day. The
+    map is the only link between ids and names: keep it private, never next to the
+    published manifests."""
+    p = Path(id_map_path)
+    data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    salts = dict(data.get("salts", {}))
+    added = [n for n in names if n not in salts]
+    for n in added:
+        salts[n] = os.urandom(16).hex()
+    if added or not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(p.name + f".tmp.{os.getpid()}")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(json.dumps({"_type": "ots_ledger_id_map", "scheme": REDACTED_SCHEME,
+                                     "salts": salts}, ensure_ascii=False, indent=2))
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, p)
+    return salts
+
+
+def build_manifest(ledger_paths: list[str], out_dir: str, *,
+                   id_map_path: str | None = None) -> tuple[str, str]:
+    """Write a manifest pinning each ledger's sha256 + head seal. Returns (path, sha256).
+
+    Default (format 1) records each ledger's basename and absolute path. With
+    ``id_map_path`` the manifest is publishable as-is (format 2): no paths, and each
+    ledger is named only by a salted id (see ``ledger_id``); the private name -> salt
+    map is kept at ``id_map_path``, which must lie outside ``out_dir``."""
     os.makedirs(out_dir, exist_ok=True)
     rows = []
+    if id_map_path is not None:
+        out_real = os.path.realpath(out_dir)
+        if os.path.commonpath([out_real, os.path.realpath(id_map_path)]) == out_real:
+            raise ValueError("id_map_path must not be inside out_dir (it would be published)")
+        names = [os.path.basename(f) for f in ledger_paths]
+        if len(set(names)) != len(names):
+            raise ValueError("duplicate ledger basenames cannot be redacted unambiguously")
+        salts = _load_salts(id_map_path, names)
     for f in ledger_paths:
-        rows.append({"ledger": os.path.basename(f), "path": str(f),
-                     "bytes": Path(f).stat().st_size, "sha256": _sha256(f),
-                     "head_seal": _head_seal(f)})
+        common = {"bytes": Path(f).stat().st_size, "sha256": _sha256(f),
+                  "head_seal": _head_seal(f)}
+        if id_map_path is None:
+            rows.append({"ledger": os.path.basename(f), "path": str(f), **common})
+        else:
+            name = os.path.basename(f)
+            rows.append({"ledger_id": ledger_id(name, salts[name]), **common})
     stamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     # Different legitimate operations in the same second must not replace evidence.
     man = os.path.join(out_dir, f"manifest_{stamp}_{uuid.uuid4().hex}.json")
@@ -64,6 +118,11 @@ def build_manifest(ledger_paths: list[str], out_dir: str) -> tuple[str, str]:
                 "purpose": "Bitcoin timestamp of mirror-stack ledger heads — "
                            "proves no-backdating, NOT content truth.",
                 "ledger_count": len(rows), "ledgers": rows}
+    if id_map_path is not None:
+        manifest["format"] = 2
+        manifest["ledger_naming"] = {
+            "scheme": REDACTED_SCHEME,
+            "salts": "private; disclosed per ledger by the operator on request"}
     with open(man, "x", encoding="utf-8") as stream:
         stream.write(json.dumps(manifest, ensure_ascii=False, indent=2))
         stream.flush()
@@ -76,11 +135,13 @@ def _info(ots_path: str) -> str:
                           text=True, timeout=60).stdout
 
 
-def stamp(ledger_paths: list[str], out_dir: str) -> dict:
-    """Build a manifest of the ledger heads and submit it to the OTS Bitcoin calendars."""
+def stamp(ledger_paths: list[str], out_dir: str, *, id_map_path: str | None = None) -> dict:
+    """Build a manifest of the ledger heads and submit it to the OTS Bitcoin calendars.
+
+    Pass ``id_map_path`` to write a publishable (format 2, redacted-name) manifest."""
     if not ledger_paths:
         return {"ok": False, "state": "error", "error": "ledger_paths is empty"}
-    man, sha = build_manifest(ledger_paths, out_dir)
+    man, sha = build_manifest(ledger_paths, out_dir, id_map_path=id_map_path)
     try:
         r = subprocess.run([OTS, "stamp", man], capture_output=True, text=True, timeout=120)
     except FileNotFoundError:
@@ -142,3 +203,30 @@ def verify(ots_path: str, explorer: str = DEFAULT_EXPLORER) -> dict:
             "explorer": explorer,
             "proves": "ledger heads existed before this Bitcoin block (no backdating)",
             "does_not_prove": ["content truth (GIGO)", "an external judging witness exists"]}
+
+
+def locate_ledger(manifest_path: str, ledger_path: str, *, name: str | None = None,
+                  salt_hex: str | None = None) -> dict:
+    """Find which manifest row pins this ledger (format 1 or 2).
+
+    Ledgers are append-only, so a later copy still matches if its first ``bytes``
+    bytes hash to the pinned sha256. With ``name`` + ``salt_hex`` (disclosed by the
+    operator) a format-2 row's ``ledger_id`` is also checked against that name."""
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    data = Path(ledger_path).read_bytes()
+    want_id = ledger_id(name, salt_hex) if (name and salt_hex) else None
+    for row in manifest.get("ledgers", []):
+        n = row.get("bytes")
+        if not isinstance(n, int) or n > len(data):
+            continue
+        if hashlib.sha256(data[:n]).hexdigest() != row.get("sha256"):
+            continue
+        result = {"found": True, "format": manifest.get("format", 1),
+                  "pinned_bytes": n, "exact": n == len(data),
+                  "pinned_lines": data[:n].count(b"\n"),
+                  "head_seal": row.get("head_seal"),
+                  "ledger_id": row.get("ledger_id"), "ledger": row.get("ledger")}
+        if want_id is not None:
+            result["name_matches"] = row.get("ledger_id") == want_id or row.get("ledger") == name
+        return result
+    return {"found": False, "format": manifest.get("format", 1)}
