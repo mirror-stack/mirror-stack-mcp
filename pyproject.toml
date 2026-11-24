@@ -23,7 +23,7 @@ dependencies = [
     # action-mirror and provenance-mirror pins were labelled "v0.2.0" while
     # sitting TWO commits before that tag, so an install got the pre-org-migration
     # docs (stale `bhyi4/` self-references, SPEC v1.0) under a v0.2.0 label.
-    "measure-mirror @ git+https://github.com/mirror-stack/measure-mirror@219058aff61f2e6c0ea84041fd47a3b616ba3d85", # v0.41.2 — explicit verification depth
+    "measure-mirror @ git+https://github.com/mirror-stack/measure-mirror@d42cc4b69698e77fc7c561679cf9e67700641d56", # v0.42.0 — (auto-pin: was v0.41.2 219058af; verify via CI test_pins_are_releases + fixtures) — explicit verification depth
     "action-mirror @ git+https://github.com/mirror-stack/action-mirror@22eb4c5b09578f443b59d12a8455c5493b6064ed", # v0.4.0 — unchanged released action core
     "provenance-mirror @ git+https://github.com/mirror-stack/provenance-mirror@d41df098979e84a81469eeec1a3e3b1d471c90ef", # v0.3.1 — unverified hints and synchronized guides
 ]
