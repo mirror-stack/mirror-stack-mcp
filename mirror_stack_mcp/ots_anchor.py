@@ -19,12 +19,33 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
+import sys
 import urllib.request
 import uuid
 from pathlib import Path
 
-OTS = os.environ.get("OTS_BIN", "ots")
+def _find_ots() -> str:
+    """`OTS_BIN`, else `ots` on PATH, else the `ots` installed next to this Python.
+
+    pip puts the `ots` script beside the interpreter (venv `bin/` or `Scripts\\`). Without
+    this fallback, a venv that is not activated could not find it (seen on Windows).
+    """
+    if os.environ.get("OTS_BIN"):
+        return os.environ["OTS_BIN"]
+    found = shutil.which("ots")
+    if found:
+        return found
+    here = os.path.dirname(sys.executable)
+    for name in ("ots", "ots.exe"):
+        cand = os.path.join(here, name)
+        if os.path.exists(cand):
+            return cand
+    return "ots"
+
+
+OTS = _find_ots()
 DEFAULT_EXPLORER = os.environ.get("OTS_EXPLORER", "https://blockstream.info/api")
 _BLOCK_RE = re.compile(r"BitcoinBlockHeaderAttestation\((\d+)\)")
 _ROOT_RE = re.compile(r"Bitcoin block merkle root ([0-9a-fA-F]{64})")
@@ -158,8 +179,18 @@ def build_manifest(ledger_paths: list[str], out_dir: str, *,
 
 
 def _info(ots_path: str) -> str:
-    return subprocess.run([OTS, "info", ots_path], capture_output=True,
-                          text=True, timeout=60).stdout
+    """`ots info` output. Raises if `ots` fails, instead of returning partial stdout.
+
+    A crashing client (e.g. opentimestamps-client on Windows, where python-bitcoinlib
+    cannot find an OpenSSL library) used to look like a proof with no file digest or
+    attestation — a wrong diagnosis. Now the real error surfaces.
+    """
+    r = subprocess.run([OTS, "info", ots_path], capture_output=True,
+                       text=True, encoding="utf-8", errors="replace", timeout=60)
+    if r.returncode != 0:
+        tail = (r.stderr or r.stdout or "").strip().splitlines()[-1:] or ["no output"]
+        raise RuntimeError(f"`ots info` failed (exit {r.returncode}): {tail[0][:300]}")
+    return r.stdout
 
 
 def stamp(ledger_paths: list[str], out_dir: str, *, id_map_path: str | None = None) -> dict:
@@ -191,7 +222,11 @@ def upgrade(ots_path: str) -> dict:
         subprocess.run([OTS, "upgrade", ots_path], capture_output=True, text=True, timeout=120)
     except FileNotFoundError:
         return {"state": "error", "error": f"`{OTS}` not found — pip install opentimestamps-client"}
-    m = _BLOCK_RE.search(_info(ots_path))
+    try:
+        info = _info(ots_path)
+    except RuntimeError as e:
+        return {"state": "error", "error": str(e)}
+    m = _BLOCK_RE.search(info)
     if m:
         return {"state": "bitcoin_confirmed", "block_height": int(m.group(1)),
                 "next": f"mm_anchor_verify('{ots_path}')"}

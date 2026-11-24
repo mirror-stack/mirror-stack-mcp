@@ -12,6 +12,10 @@
   merkle root with its own block. It used the first one printed, which in a real
   multi-calendar proof was 56 blocks later than the earliest. Also reports
   `attested_blocks` and `proof_file_sha256`.
+- `ots info` failures now raise with the client's own error instead of returning empty
+  output, which was misreported as "proof does not report which file it stamps" (seen on
+  Windows, where opentimestamps-client crashes on import). `ots` is also found next to the
+  running interpreter when the venv is not activated.
 - Replace deprecated `datetime.utcnow()` / `utcfromtimestamp()` (same output format).
 
 - OTS anchoring: optional publishable manifest (format 2). `stamp()` / `build_manifest()`

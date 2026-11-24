@@ -115,3 +115,26 @@ def test_cli_reports_external_time_only_when_bound(anchored, capsys):
 def test_cli_manifest_without_proof_fails(anchored, capsys):
     led, man, _, _ = anchored
     assert verify.main([str(led), "--manifest", str(man)]) == 1
+
+
+def test_ots_crash_is_reported_not_misread(tmp_path, monkeypatch):
+    """A crashing `ots` must surface its error, not look like a proof without a digest."""
+    import subprocess as sp
+
+    class R:
+        returncode, stdout = 1, ""
+        stderr = "Traceback ...\nTypeError: argument of type 'NoneType' is not iterable"
+
+    monkeypatch.setattr(o.subprocess, "run", lambda *a, **k: R())
+    with pytest.raises(RuntimeError, match="ots info. failed .exit 1.: TypeError"):
+        o._info("x.ots")
+    assert o.upgrade(str(tmp_path / "x.ots"))["state"] == "error"
+
+
+def test_ots_found_next_to_the_interpreter(tmp_path, monkeypatch):
+    monkeypatch.delenv("OTS_BIN", raising=False)
+    monkeypatch.setattr(o.shutil, "which", lambda name: None)
+    exe = tmp_path / "python"
+    (tmp_path / "ots").write_text("")
+    monkeypatch.setattr(o.sys, "executable", str(exe))
+    assert o._find_ots() == str(tmp_path / "ots")
