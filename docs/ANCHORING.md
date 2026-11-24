@@ -111,9 +111,23 @@ The packaged implementation is
 [`mirror_stack_mcp/ots_anchor.py`](../mirror_stack_mcp/ots_anchor.py).
 Machine-local cron scripts are deployment-specific and are not shipped in the conventions directory.
 
-The outsider `mirror-stack-verify` CLI recomputes ledger hashes but checks a supplied
-OTS proof separately. It does not currently verify ledger-to-proof binding, so its
-output correctly leaves this ledger's external-clock precedence unverified.
+The outsider `mirror-stack-verify` CLI recomputes ledger hashes. Given both the proof and
+the manifest it stamps, it also binds them to the ledger (`ots_anchor.bind`):
+
+```bash
+mirror-stack-verify claims.jsonl --ots anchors/manifest_X.json.ots --manifest anchors/manifest_X.json
+```
+
+1. proof -> manifest: the file digest in `ots info` must equal sha256(manifest). Otherwise
+   any valid proof for any file would "verify".
+2. manifest -> ledger: a manifest row must pin the first `bytes` bytes of this ledger
+   (format 1 and 2; later appends are fine, a rewrite of the pinned part is not).
+3. proof -> Bitcoin: the EARLIEST attested block's merkle root must match a public explorer.
+   A proof stamped on several calendars carries several blocks, not listed in order.
+
+Only when all three hold is `[EXTERNAL_TIME]` printed for the pinned lines; later lines are
+reported as not covered. With `--ots` alone the proof is checked separately and the
+ledger's external-clock precedence stays unverified.
 
 ## Notes
 

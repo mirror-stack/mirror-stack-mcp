@@ -73,8 +73,14 @@ Reinstall the package and reconnect the client after an upgrade; do not rewrite 
 fixtures do not certify integrity. Legacy 16-hex seals are accepted with a warning.
 `stack_verify_all` labels checks `HASH_RECOMPUTED`, `LOCAL_SNAPSHOT`, or `HEAD_WITNESS`.
 None certifies content truth, author identity, independent reproduction or external time.
-The outsider CLI checks an optional OTS proof separately; ledger-to-proof binding is
-not checked, so it does not claim this ledger's external-clock precedence.
+The outsider CLI reports external time only for a bound proof:
+`mirror-stack-verify LEDGER --ots MANIFEST.json.ots --manifest MANIFEST.json` checks that
+the proof stamps that manifest (sha256), that the manifest pins a prefix of this ledger,
+and that the proof's earliest Bitcoin block matches a public explorer. Only then does it
+print `[EXTERNAL_TIME]` for the pinned lines (and which preregistrations they hold); lines
+appended after the stamp are listed as not covered. Without `--manifest` it checks the
+proof separately and leaves this ledger's external-clock precedence unverified. The
+explorer is a trusted third party here; a local Bitcoin node with `ots verify` removes it.
 
 The compute/publish gate verifies ledger integrity before reading the decision facts.
 Publish requires a reasoned retraction, or an explicit result bound to the original seal:

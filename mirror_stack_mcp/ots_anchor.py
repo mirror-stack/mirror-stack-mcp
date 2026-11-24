@@ -28,6 +28,33 @@ OTS = os.environ.get("OTS_BIN", "ots")
 DEFAULT_EXPLORER = os.environ.get("OTS_EXPLORER", "https://blockstream.info/api")
 _BLOCK_RE = re.compile(r"BitcoinBlockHeaderAttestation\((\d+)\)")
 _ROOT_RE = re.compile(r"Bitcoin block merkle root ([0-9a-fA-F]{64})")
+_FILE_RE = re.compile(r"File sha256 hash: ([0-9a-fA-F]{64})")
+
+
+def _attestations(info: str) -> list[tuple[int, str | None]]:
+    """Every Bitcoin attestation in ``ots info`` output as (height, merkle_root).
+
+    A proof stamped on several calendars carries one attestation per calendar, often in
+    different blocks. ``ots info`` prints each merkle root as a comment line right AFTER
+    its ``verify BitcoinBlockHeaderAttestation(h)`` line; the root is computed by applying
+    the proof's operations to the file digest, so it is not a value the proof merely asserts.
+    """
+    out: list[list] = []
+    for line in info.splitlines():
+        m = _BLOCK_RE.search(line)
+        if m:
+            out.append([int(m.group(1)), None])
+            continue
+        m = _ROOT_RE.search(line)
+        if m and out and out[-1][1] is None:
+            out[-1][1] = m.group(1).lower()
+    return [(h, r) for h, r in out]
+
+
+def _proof_digest(info: str) -> str | None:
+    """The sha256 of the file the proof is about, as ``ots info`` reports it."""
+    m = _FILE_RE.search(info)
+    return m.group(1).lower() if m else None
 
 
 def _sha256(p) -> str:
@@ -110,11 +137,11 @@ def build_manifest(ledger_paths: list[str], out_dir: str, *,
         else:
             name = os.path.basename(f)
             rows.append({"ledger_id": ledger_id(name, salts[name]), **common})
-    stamp = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
     # Different legitimate operations in the same second must not replace evidence.
     man = os.path.join(out_dir, f"manifest_{stamp}_{uuid.uuid4().hex}.json")
     manifest = {"_type": "ots_anchor_manifest",
-                "ts": datetime.datetime.utcnow().isoformat() + "Z",
+                "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "purpose": "Bitcoin timestamp of mirror-stack ledger heads — "
                            "proves no-backdating, NOT content truth.",
                 "ledger_count": len(rows), "ledgers": rows}
@@ -181,25 +208,36 @@ def _explorer_block(height: int, explorer: str):
 
 def verify(ots_path: str, explorer: str = DEFAULT_EXPLORER) -> dict:
     """Verify a Bitcoin-anchored proof WITHOUT a local node, by cross-checking the block
-    merkle root on a public explorer. Returns block height + independent-match."""
+    merkle root on a public explorer. Returns block height + independent-match.
+
+    Uses the EARLIEST attestation in the proof. A proof stamped on several calendars holds
+    one attestation per calendar; the first one printed is not necessarily the earliest
+    block (a real 2026-07-25 proof listed 959655 before 959599), and reporting a later
+    block understates how early the data existed.
+
+    ``proof_file_sha256`` is the digest the proof is about. This function does NOT check
+    it against any file — use ``bind()`` to tie the proof to a manifest and a ledger."""
     info = _info(ots_path)
-    m = _BLOCK_RE.search(info)
-    if not m:
+    atts = _attestations(info)
+    if not atts:
         return {"verified": False, "state": "pending",
+                "proof_file_sha256": _proof_digest(info),
                 "note": "no Bitcoin attestation yet — run mm_anchor_upgrade first"}
-    height = int(m.group(1))
-    rm = _ROOT_RE.search(info)
-    expected = rm.group(1).lower() if rm else None
+    height, expected = min(atts, key=lambda a: a[0])
+    base = {"block_height": height, "expected_merkle_root": expected,
+            "attested_blocks": sorted({h for h, _ in atts}),
+            "proof_file_sha256": _proof_digest(info)}
     try:
         bhash, actual, ts = _explorer_block(height, explorer)
     except Exception as e:  # network / explorer issue — attestation still embedded
-        return {"verified": False, "block_height": height, "expected_merkle_root": expected,
+        return {"verified": False, **base,
                 "note": f"explorer fetch failed ({e}); embedded Bitcoin attestation is present"}
     match = expected is not None and actual is not None and actual.lower() == expected
-    return {"verified": match, "block_height": height,
-            "expected_merkle_root": expected, "explorer_merkle_root": actual,
+    return {"verified": match, **base,
+            "explorer_merkle_root": actual,
             "block_hash": bhash,
-            "block_time_utc": (datetime.datetime.utcfromtimestamp(ts).isoformat() + "Z") if ts else None,
+            "block_time_utc": (datetime.datetime.fromtimestamp(ts, datetime.timezone.utc)
+                               .strftime("%Y-%m-%dT%H:%M:%SZ")) if ts else None,
             "explorer": explorer,
             "proves": "ledger heads existed before this Bitcoin block (no backdating)",
             "does_not_prove": ["content truth (GIGO)", "an external judging witness exists"]}
@@ -230,3 +268,75 @@ def locate_ledger(manifest_path: str, ledger_path: str, *, name: str | None = No
             result["name_matches"] = row.get("ledger_id") == want_id or row.get("ledger") == name
         return result
     return {"found": False, "format": manifest.get("format", 1)}
+
+
+def bind(ledger_path: str, manifest_path: str, ots_path: str, *,
+         explorer: str = DEFAULT_EXPLORER, verify_fn=None) -> dict:
+    """Tie an OTS proof to a manifest, the manifest to a ledger prefix, and report which
+    entries of THIS ledger existed before the proof's Bitcoin block.
+
+    Each step must hold for the next to mean anything:
+
+      1. proof -> manifest: the digest the proof is about equals sha256(manifest file).
+         Without this, any valid proof for any file "verifies".
+      2. manifest -> ledger: some manifest row pins the first ``bytes`` bytes of this
+         ledger by sha256 (``locate_ledger``). Appends after stamping are fine.
+      3. proof -> Bitcoin: the earliest attested block's merkle root matches a public
+         explorer (``verify``).
+
+    Only when all three hold are entries inside the pinned prefix reported as existing
+    before that block. Entries after the prefix are listed as NOT covered by this proof.
+    Says nothing about content truth, author identity, or what happened off-ledger.
+
+    ``verify_fn`` replaces ``verify`` (tests; offline use).
+    """
+    vf = verify_fn or verify
+    out: dict = {"bound": False, "ledger": str(ledger_path), "manifest": str(manifest_path),
+                 "ots_proof": str(ots_path)}
+    manifest_sha = _sha256(manifest_path)
+    proof = vf(ots_path, explorer)
+    out["bitcoin"] = proof
+    proof_sha = proof.get("proof_file_sha256")
+    out["proof_matches_manifest"] = proof_sha == manifest_sha
+    if proof_sha is None:
+        out["note"] = "proof does not report which file it stamps; cannot bind"
+        return out
+    if proof_sha != manifest_sha:
+        out["note"] = (f"proof is for sha256 {proof_sha[:16]}…, manifest is "
+                       f"{manifest_sha[:16]}… — this proof does not stamp this manifest")
+        return out
+    loc = locate_ledger(manifest_path, ledger_path)
+    out["manifest_pins_ledger"] = bool(loc.get("found"))
+    if not loc.get("found"):
+        out["note"] = ("no manifest row pins a prefix of this ledger — it was rewritten, or "
+                       "is a different ledger")
+        return out
+    out["pinned_bytes"] = loc["pinned_bytes"]
+    out["pinned_lines"] = loc["pinned_lines"]
+    with open(ledger_path, "rb") as f:
+        data = f.read()
+    covered, later = [], []
+    for i, raw in enumerate(data.splitlines(keepends=True)):
+        if not raw.strip():
+            continue
+        try:
+            e = json.loads(raw)
+        except ValueError:
+            e = {}
+        row = {"line": i + 1, "type": e.get("_type", "preregistration" if "metric" in e else None),
+               "claim_id": e.get("claim_id"), "seal": e.get("seal"), "ts": e.get("ts")}
+        (covered if i < loc["pinned_lines"] else later).append(row)
+    out["covered_entries"] = covered
+    out["uncovered_entries"] = later
+    if not proof.get("verified"):
+        out["note"] = ("proof stamps this manifest and the manifest pins this ledger, but the "
+                       "Bitcoin block is NOT confirmed: " + str(proof.get("note", "explorer mismatch")))
+        return out
+    out["bound"] = True
+    out["existed_before"] = {"block_height": proof["block_height"],
+                             "block_time_utc": proof.get("block_time_utc")}
+    out["proves"] = (f"the first {loc['pinned_lines']} ledger lines existed before Bitcoin block "
+                     f"{proof['block_height']} ({proof.get('block_time_utc')})")
+    out["does_not_prove"] = ["content truth", "author identity",
+                             "anything about lines after the pinned prefix"]
+    return out
